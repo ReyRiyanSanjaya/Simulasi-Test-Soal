@@ -837,10 +837,7 @@ function startMiniRemedial(question) {
 }
 
 function flashTipsCard() {
-  dom.quickTipsCard.classList.remove("flash");
-  window.requestAnimationFrame(() => {
-    dom.quickTipsCard.classList.add("flash");
-  });
+  // Animasi flash dinonaktifkan agar UI tidak terasa "berdetak".
 }
 
 function chooseCurrentAnswer(answerIndex) {
@@ -1131,61 +1128,104 @@ function generateHitungan(count) {
   const desa = ["Suka Maju", "Harapan Jaya", "Mekar Tani", "Karya Bersama", "Sejahtera"];
   const out = [];
   for (let i = 0; i < count; i += 1) {
-    const mode = i % 5;
+    const mode = i % 8;
     if (mode === 0) {
-      const anggota = 80 + (i % 7) * 10;
-      const aktif = Math.round(anggota * (0.65 + (i % 3) * 0.05));
-      const benar = String(Math.round((aktif / anggota) * 100));
+      const modal = 120 + (i % 6) * 20;
+      const naik = 10 + (i % 3) * 5;
+      const turun = 5 + (i % 3) * 5;
+      const akhir = Math.round(modal * (1 + (naik / 100)) * (1 - (turun / 100)));
       out.push(createQuestion(
-        `Di Koperasi Desa ${desa[i % desa.length]}, dari ${anggota} anggota terdapat ${aktif} anggota aktif. Persentase anggota aktif adalah ...`,
-        `${benar}%`,
-        [`${Number(benar) - 5}%`, `${Number(benar) + 5}%`, `${Number(benar) - 10}%`, `${Number(benar) + 10}%`],
-        `Persentase anggota aktif = ${aktif}/${anggota} x 100% = ${benar}%.`,
+        `Modal unit usaha di Desa ${desa[i % desa.length]} sebesar ${modal} juta naik ${naik}% lalu turun ${turun}%. Nilai akhirnya adalah ...`,
+        `${akhir} juta`,
+        [`${akhir - 6} juta`, `${akhir + 6} juta`, `${akhir - 10} juta`, `${akhir + 10} juta`],
+        `Nilai akhir = ${modal} x (1+${naik}/100) x (1-${turun}/100) = ${akhir} juta.`,
         i % 5
       ));
     } else if (mode === 1) {
-      const target = 120 + (i % 6) * 20;
-      const hari = 4 + (i % 4);
-      const benar = String(Math.ceil(target / hari));
+      const petugasAwal = 6 + (i % 4) * 2;
+      const hariAwal = 12 + (i % 3) * 3;
+      const petugasBaru = petugasAwal + 3;
+      const benar = Math.ceil((petugasAwal * hariAwal) / petugasBaru);
       out.push(createQuestion(
-        `Tim pendamping harus mengunjungi ${target} UMKM dalam ${hari} hari kerja. Minimal kunjungan per hari agar target tercapai adalah ...`,
-        `${benar} UMKM`,
-        [`${Number(benar) - 2} UMKM`, `${Number(benar) - 1} UMKM`, `${Number(benar) + 1} UMKM`, `${Number(benar) + 2} UMKM`],
-        `Kunjungan minimal per hari = ceil(${target}/${hari}) = ${benar}.`,
+        `${petugasAwal} petugas menyelesaikan verifikasi data dalam ${hariAwal} hari. Jika petugas menjadi ${petugasBaru} orang (kecepatan sama), waktu yang dibutuhkan adalah ...`,
+        `${benar} hari`,
+        [`${benar - 2} hari`, `${benar - 1} hari`, `${benar + 1} hari`, `${benar + 2} hari`],
+        `Perbandingan berbalik nilai: p1 x h1 = p2 x h2 -> h2 = (${petugasAwal} x ${hariAwal})/${petugasBaru} = ${benar} hari (dibulatkan ke atas).`,
         i % 5
       ));
     } else if (mode === 2) {
-      const modal = 25 + (i % 5) * 5;
-      const kenaikan = 10 + (i % 4) * 5;
-      const benar = String(Math.round((modal * kenaikan) / 100));
+      const totalBulan = 5;
+      const rataRata = 76 + (i % 5) * 3;
+      const empatBulan = [70 + (i % 4), 74 + (i % 4), 78 + (i % 4), 80 + (i % 4)];
+      const jumlah4 = empatBulan.reduce((s, x) => s + x, 0);
+      const benar = (rataRata * totalBulan) - jumlah4;
       out.push(createQuestion(
-        `Simpan pinjam naik sebesar ${kenaikan}% dari modal awal ${modal} juta rupiah. Kenaikan nominalnya adalah ...`,
-        `${benar} juta`,
-        [`${Number(benar) - 2} juta`, `${Number(benar) + 2} juta`, `${Number(benar) + 3} juta`, `${Number(benar) - 1} juta`],
-        `Kenaikan nominal = ${kenaikan}% x ${modal} = ${benar} juta rupiah.`,
+        `Rata-rata skor monitoring 5 bulan adalah ${rataRata}. Empat bulan pertama berturut-turut ${empatBulan.join(", ")}. Skor bulan ke-5 adalah ...`,
+        String(benar),
+        [String(benar - 2), String(benar + 2), String(benar - 4), String(benar + 4)],
+        `Jumlah total 5 bulan = ${rataRata} x 5 = ${rataRata * 5}. Jumlah 4 bulan = ${jumlah4}. Bulan ke-5 = ${(rataRata * 5) - jumlah4}.`,
         i % 5
       ));
     } else if (mode === 3) {
-      const produksi1 = 18 + (i % 5) * 2;
-      const produksi2 = 24 + (i % 4) * 2;
-      const benar = `${produksi1}:${produksi2}`;
+      const barisAwal = 12 + (i % 4);
+      const beda = 4 + (i % 3);
+      const sukuKe = 6 + (i % 3);
+      const benar = barisAwal + ((sukuKe - 1) * beda);
       out.push(createQuestion(
-        `Kelompok A menghasilkan ${produksi1} paket sembako dan Kelompok B menghasilkan ${produksi2} paket. Rasio A : B adalah ...`,
-        benar,
-        [`${produksi2}:${produksi1}`, `${produksi1 + produksi2}:${produksi2}`, `${produksi1}:${produksi1 + produksi2}`, `${produksi2}:${produksi1 + produksi2}`],
-        `Rasio langsung sesuai data adalah ${produksi1}:${produksi2}.`,
+        `Sebuah deret aritmetika memiliki suku pertama ${barisAwal} dan beda ${beda}. Nilai suku ke-${sukuKe} adalah ...`,
+        String(benar),
+        [String(benar - beda), String(benar + beda), String(benar - 2), String(benar + 2)],
+        `Un = a + (n-1)b = ${barisAwal} + (${sukuKe}-1) x ${beda} = ${benar}.`,
+        i % 5
+      ));
+    } else if (mode === 4) {
+      const aHari = 4 + (i % 3);
+      const bHari = 6 + (i % 4);
+      const benar = Math.round((1 / ((1 / aHari) + (1 / bHari))) * 10) / 10;
+      out.push(createQuestion(
+        `Petugas A menyelesaikan validasi data dalam ${aHari} hari, petugas B dalam ${bHari} hari. Jika bekerja bersama, pekerjaan selesai sekitar ...`,
+        `${benar} hari`,
+        [`${(benar + 0.8).toFixed(1)} hari`, `${(benar + 1.2).toFixed(1)} hari`, `${(benar - 0.6).toFixed(1)} hari`, `${(benar + 1.8).toFixed(1)} hari`],
+        `Laju gabungan = 1/${aHari} + 1/${bHari}. Waktu = 1/laju = ${benar} hari.`,
+        i % 5
+      ));
+    } else if (mode === 5) {
+      const beli = 24000 + (i % 5) * 3000;
+      const untung = 15 + (i % 4) * 5;
+      const benar = Math.round(beli * (1 + (untung / 100)));
+      out.push(createQuestion(
+        `Sebuah produk koperasi dibeli Rp${beli.toLocaleString("id-ID")} dan dijual dengan keuntungan ${untung}%. Harga jualnya adalah ...`,
+        `Rp${benar.toLocaleString("id-ID")}`,
+        [
+          `Rp${(benar - 2000).toLocaleString("id-ID")}`,
+          `Rp${(benar + 2000).toLocaleString("id-ID")}`,
+          `Rp${(benar - 4000).toLocaleString("id-ID")}`,
+          `Rp${(benar + 4000).toLocaleString("id-ID")}`
+        ],
+        `Harga jual = harga beli x (1 + untung/100) = Rp${benar.toLocaleString("id-ID")}.`,
+        i % 5
+      ));
+    } else if (mode === 6) {
+      const total = 120 + (i % 5) * 20;
+      const laki = 45 + (i % 4) * 5;
+      const benar = Math.round((laki / total) * 100);
+      out.push(createQuestion(
+        `Dalam pelatihan anggota berjumlah ${total} orang, peserta laki-laki ${laki} orang. Persentase peserta laki-laki adalah ...`,
+        `${benar}%`,
+        [`${benar - 5}%`, `${benar + 5}%`, `${benar - 10}%`, `${benar + 10}%`],
+        `Persentase = ${laki}/${total} x 100% = ${benar}%.`,
         i % 5
       ));
     } else {
-      const a = 3 + (i % 6);
-      const b = 4 + (i % 7);
-      const c = a * b + 6;
-      const benar = String((c - 6) / a);
+      const jarak = 90 + (i % 6) * 15;
+      const kecepatan = 30 + (i % 5) * 5;
+      const benar = Math.round((jarak / kecepatan) * 100) / 100;
+      const menit = Math.round(benar * 60);
       out.push(createQuestion(
-        `Tentukan nilai x: ${a}x + 6 = ${c}.`,
-        benar,
-        [String(Number(benar) - 1), String(Number(benar) + 1), String(Number(benar) + 2), String(Number(benar) - 2)],
-        `Pindahkan 6 ke ruas kanan: ${a}x = ${c - 6}, maka x = ${(c - 6) / a}.`,
+        `Tim monitoring menempuh jarak ${jarak} km dengan kecepatan rata-rata ${kecepatan} km/jam. Waktu tempuhnya adalah ...`,
+        `${menit} menit`,
+        [`${menit - 15} menit`, `${menit + 15} menit`, `${menit - 30} menit`, `${menit + 30} menit`],
+        `Waktu = jarak/kecepatan = ${jarak}/${kecepatan} = ${benar} jam = ${menit} menit.`,
         i % 5
       ));
     }
@@ -1384,52 +1424,192 @@ function generateKDKMP(count) {
     {
       p: "Koperasi desa mencatat penurunan partisipasi rapat anggota selama 3 periode. Tindakan manajerial paling tepat adalah ...",
       a: "Menganalisis akar masalah dan menyesuaikan pola layanan rapat berbasis kebutuhan anggota",
-      e: "Penurunan partisipasi perlu ditangani melalui diagnosis masalah dan redesign layanan, bukan sekadar instruksi."
+      e: "Penurunan partisipasi perlu ditangani melalui diagnosis masalah dan redesign layanan, bukan sekadar instruksi.",
+      d: [
+        "Menegur anggota yang tidak hadir tanpa evaluasi penyebab",
+        "Mengurangi frekuensi rapat agar konflik berkurang",
+        "Menutup forum diskusi agar rapat lebih singkat",
+        "Menetapkan kehadiran wajib tanpa dukungan fasilitasi"
+      ]
     },
     {
       p: "Unit usaha simpan pinjam mengalami NPL meningkat. Prioritas kebijakan pengurus adalah ...",
       a: "Memperketat analisis kelayakan, monitoring angsuran, dan edukasi peminjam",
-      e: "Pengendalian kredit bermasalah membutuhkan kombinasi analisis risiko, kontrol, dan pendampingan anggota."
+      e: "Pengendalian kredit bermasalah membutuhkan kombinasi analisis risiko, kontrol, dan pendampingan anggota.",
+      d: [
+        "Membekukan seluruh pinjaman tanpa segmentasi risiko",
+        "Menambah plafon pinjaman agar tunggakan tertutup",
+        "Menghapus evaluasi kelayakan untuk mempercepat layanan",
+        "Mengandalkan penagihan informal tanpa SOP"
+      ]
     },
     {
       p: "Saat menyusun RKAT, data kebutuhan anggota tidak lengkap. Langkah awal terbaik adalah ...",
       a: "Melakukan pemetaan kebutuhan anggota melalui survei dan forum kelompok",
-      e: "Perencanaan yang baik harus berbasis evidence agar program tepat sasaran."
+      e: "Perencanaan yang baik harus berbasis evidence agar program tepat sasaran.",
+      d: [
+        "Menyalin program tahun lalu tanpa validasi kebutuhan terbaru",
+        "Menentukan prioritas berdasarkan asumsi pengurus inti",
+        "Mengutamakan program paling populer tanpa data lapangan",
+        "Menunda RKAT hingga seluruh data sempurna"
+      ]
     },
     {
       p: "Pengurus ingin digitalisasi layanan koperasi, tetapi SDM belum siap. Strategi paling realistis adalah ...",
       a: "Menerapkan digitalisasi bertahap disertai pelatihan dan SOP",
-      e: "Transformasi digital berhasil jika kesiapan SDM, proses, dan tata kelola dibangun bertahap."
+      e: "Transformasi digital berhasil jika kesiapan SDM, proses, dan tata kelola dibangun bertahap.",
+      d: [
+        "Meluncurkan sistem penuh sekaligus agar cepat terlihat modern",
+        "Menunda digitalisasi sampai semua anggota mahir teknologi",
+        "Mengganti seluruh proses manual tanpa pelatihan",
+        "Fokus membeli aplikasi tanpa redesign proses kerja"
+      ]
     },
     {
       p: "Konflik antara dua kelompok anggota mengganggu operasional koperasi. Pendekatan terbaik adalah ...",
       a: "Mediasi berbasis AD/ART dengan fasilitator netral",
-      e: "Mediasi berbasis aturan organisasi menjaga objektivitas sekaligus legitimasi keputusan."
+      e: "Mediasi berbasis aturan organisasi menjaga objektivitas sekaligus legitimasi keputusan.",
+      d: [
+        "Membiarkan konflik mereda sendiri agar tidak memperbesar isu",
+        "Memutuskan sepihak berdasarkan suara mayoritas pengurus",
+        "Menghapus kelompok yang dianggap sumber konflik",
+        "Membatasi komunikasi antaranggota sementara waktu"
+      ]
     },
     {
       p: "Pengurus menemukan selisih kas kecil berulang pada unit toko koperasi. Tindakan korektif paling tepat adalah ...",
       a: "Audit internal rutin, pemisahan fungsi, dan rekonsiliasi kas harian",
-      e: "Pengendalian internal mencegah fraud melalui pemisahan tugas dan verifikasi berlapis."
+      e: "Pengendalian internal mencegah fraud melalui pemisahan tugas dan verifikasi berlapis.",
+      d: [
+        "Menambah kas cadangan agar selisih tidak terlihat",
+        "Menunjuk satu orang memegang kas dan pembukuan sekaligus",
+        "Mengurangi frekuensi pencatatan agar beban kerja turun",
+        "Menutup unit toko untuk menghindari temuan berulang"
+      ]
     },
     {
       p: "Program pemberdayaan UMKM anggota belum memberi dampak signifikan. Evaluasi yang paling relevan adalah ...",
       a: "Mengukur perubahan omzet, akses pasar, dan keberlanjutan usaha anggota",
-      e: "Indikator dampak harus menilai outcome, bukan hanya jumlah pelatihan yang terlaksana."
+      e: "Indikator dampak harus menilai outcome, bukan hanya jumlah pelatihan yang terlaksana.",
+      d: [
+        "Menghitung jumlah sertifikat pelatihan yang dibagikan",
+        "Menilai keberhasilan dari banyaknya publikasi kegiatan",
+        "Menggunakan indikator yang sama tanpa melihat konteks usaha",
+        "Memperbanyak seminar tanpa pendampingan lapangan"
+      ]
     },
     {
       p: "Dalam kondisi dana terbatas, prioritas investasi koperasi sebaiknya ditentukan berdasarkan ...",
       a: "Urgensi kebutuhan anggota, dampak ekonomi, dan risiko pelaksanaan",
-      e: "Prioritas investasi perlu menyeimbangkan manfaat, risiko, dan keberlanjutan."
+      e: "Prioritas investasi perlu menyeimbangkan manfaat, risiko, dan keberlanjutan.",
+      d: [
+        "Program yang paling mudah dipromosikan secara eksternal",
+        "Keinginan pengurus yang paling berpengaruh",
+        "Proposal dengan nilai anggaran terbesar",
+        "Usulan yang paling cepat disetujui tanpa kajian"
+      ]
     },
     {
       p: "Rasio biaya operasional koperasi meningkat tajam. Langkah manajerial yang tepat adalah ...",
       a: "Review proses kerja untuk efisiensi dan tetapkan pengendalian biaya berbasis KPI",
-      e: "Efisiensi biaya yang sehat dilakukan melalui perbaikan proses, bukan pemotongan membabi buta."
+      e: "Efisiensi biaya yang sehat dilakukan melalui perbaikan proses, bukan pemotongan membabi buta.",
+      d: [
+        "Memotong seluruh biaya pelatihan dan pengawasan tanpa analisis",
+        "Menaikkan iuran anggota untuk menutup pemborosan",
+        "Menghentikan layanan yang belum populer",
+        "Menghapus target kinerja agar tekanan biaya berkurang"
+      ]
     },
     {
       p: "Agar pengurus dan pengawas memiliki arah kerja yang selaras, yang harus diperkuat adalah ...",
       a: "Siklus perencanaan, pelaporan berkala, dan forum evaluasi bersama",
-      e: "Penyelarasan lintas fungsi membutuhkan mekanisme komunikasi dan evaluasi yang terstruktur."
+      e: "Penyelarasan lintas fungsi membutuhkan mekanisme komunikasi dan evaluasi yang terstruktur.",
+      d: [
+        "Pertemuan informal tanpa agenda dan notulen",
+        "Pemisahan total fungsi agar tidak saling memengaruhi",
+        "Pelaporan hanya saat terjadi masalah besar",
+        "Mengurangi keterlibatan pengawas dalam proses evaluasi"
+      ]
+    },
+    {
+      p: "Tingkat kepuasan anggota terhadap layanan front office menurun. Tindakan pertama yang paling tepat adalah ...",
+      a: "Memetakan titik keluhan utama dan menetapkan standar layanan minimum",
+      e: "Perbaikan layanan dimulai dari data keluhan yang terukur dan standar layanan yang jelas."
+    },
+    {
+      p: "Dalam audit eksternal ditemukan dokumen transaksi tidak lengkap. Respons manajemen yang paling tepat adalah ...",
+      a: "Menyusun rencana aksi perbaikan dokumen, PIC, dan tenggat waktu terukur",
+      e: "Temuan audit harus ditindaklanjuti dengan action plan yang spesifik, terukur, dan dapat diaudit ulang."
+    },
+    {
+      p: "Unit usaha baru koperasi berjalan 6 bulan tetapi margin rendah. Langkah evaluasi paling tepat adalah ...",
+      a: "Menganalisis struktur biaya, harga jual, dan produktivitas operasional",
+      e: "Margin rendah harus dibedah dari komponen biaya, pricing, dan efisiensi proses."
+    },
+    {
+      p: "Koperasi ingin meningkatkan inklusi anggota perempuan dalam pengambilan keputusan. Kebijakan terbaik adalah ...",
+      a: "Menetapkan mekanisme partisipasi setara melalui forum representatif dan indikator keterlibatan",
+      e: "Inklusi efektif membutuhkan desain forum, representasi, dan indikator partisipasi yang terpantau."
+    },
+    {
+      p: "Pengurus menerima proposal kerja sama dari mitra swasta. Langkah due diligence yang paling tepat adalah ...",
+      a: "Menilai legalitas, rekam jejak, skema manfaat-risiko, dan kesesuaian dengan AD/ART",
+      e: "Kemitraan yang sehat menuntut verifikasi legal, finansial, reputasi, dan kesesuaian tata kelola."
+    },
+    {
+      p: "Sistem antrean layanan koperasi sering menumpuk pada jam tertentu. Solusi manajerial paling tepat adalah ...",
+      a: "Menerapkan manajemen kapasitas berbasis data jam sibuk dan penjadwalan petugas",
+      e: "Antrian ditangani melalui data demand, kapasitas layanan, dan penjadwalan sumber daya."
+    },
+    {
+      p: "Ketika terjadi perubahan regulasi, langkah adaptasi organisasi yang paling tepat adalah ...",
+      a: "Melakukan asesmen dampak regulasi lalu revisi SOP dan sosialisasi internal",
+      e: "Perubahan regulasi wajib diterjemahkan ke proses kerja melalui asesmen, revisi SOP, dan pelatihan."
+    },
+    {
+      p: "Target penyaluran pinjaman tercapai, tetapi kualitas portofolio memburuk. Indikator kontrol terbaik adalah ...",
+      a: "Rasio kolektibilitas, NPL, dan kualitas monitoring pasca-penyaluran",
+      e: "Keberhasilan pinjaman tidak cukup dari volume, tetapi juga kualitas portofolio dan pengawasan."
+    },
+    {
+      p: "Koperasi menghadapi isu reputasi akibat informasi tidak akurat di media sosial. Respons terbaik adalah ...",
+      a: "Menyusun klarifikasi berbasis data, kanal resmi, dan tindak lanjut perbaikan layanan",
+      e: "Krisis reputasi harus dijawab cepat, faktual, dan disertai perbaikan nyata agar kepercayaan pulih."
+    },
+    {
+      p: "Agar implementasi program tepat sasaran lintas unit, mekanisme koordinasi terbaik adalah ...",
+      a: "Menetapkan RACI, milestone lintas unit, dan review progres berkala",
+      e: "Koordinasi lintas unit efektif jika peran jelas, target waktu konkret, dan review rutin."
+    },
+    {
+      p: "Koperasi ingin memperluas layanan digital ke wilayah dengan literasi rendah. Pendekatan terbaik adalah ...",
+      a: "Menyediakan pendampingan hibrida, panduan sederhana, dan kanal bantuan berjenjang",
+      e: "Adopsi digital di wilayah literasi rendah perlu desain layanan bertahap dan dukungan pendampingan."
+    },
+    {
+      p: "Pada evaluasi triwulan, banyak program selesai tepat waktu tetapi dampaknya rendah. Fokus perbaikan adalah ...",
+      a: "Menyelaraskan KPI output menjadi KPI outcome berbasis manfaat anggota",
+      e: "Ketepatan waktu tidak cukup; KPI harus bergeser ke outcome yang dirasakan anggota."
+    },
+    {
+      p: "Untuk mengurangi ketergantungan pada satu sumber pendapatan, strategi paling tepat adalah ...",
+      a: "Diversifikasi unit usaha berdasarkan studi kelayakan dan profil risiko",
+      e: "Diversifikasi yang sehat harus ditopang kajian kelayakan, kapasitas organisasi, dan mitigasi risiko."
+    },
+    {
+      p: "Dalam pengadaan barang, ditemukan perbedaan harga signifikan antarvendor. Langkah terbaik adalah ...",
+      a: "Menerapkan evaluasi vendor berbasis spesifikasi, kualitas, SLA, dan total biaya kepemilikan",
+      e: "Keputusan pengadaan harus menilai nilai total, bukan hanya harga terendah."
+    },
+    {
+      p: "Rapat pengurus sering tidak menghasilkan keputusan yang bisa dieksekusi. Perbaikan paling tepat adalah ...",
+      a: "Menerapkan format rapat berbasis keputusan: agenda, opsi, PIC, tenggat, dan tindak lanjut",
+      e: "Rapat efektif menghasilkan keputusan operasional dengan penanggung jawab dan batas waktu jelas."
+    },
+    {
+      p: "Koperasi ingin meningkatkan loyalitas anggota jangka panjang. Strategi terbaik adalah ...",
+      a: "Mengembangkan nilai layanan berbasis kebutuhan anggota dan sistem umpan balik berkelanjutan",
+      e: "Loyalitas dibangun dari layanan yang relevan, konsisten, dan terus disempurnakan dari feedback."
     }
   ];
 
@@ -1439,13 +1619,16 @@ function generateKDKMP(count) {
     "Membatasi informasi hanya untuk pengurus inti",
     "Mengambil keputusan tanpa data",
     "Menghapus proses evaluasi",
-    "Mengandalkan intuisi tanpa standar"
+    "Mengandalkan intuisi tanpa standar",
+    "Menyalin kebijakan lama tanpa evaluasi konteks",
+    "Memilih langkah tercepat tanpa analisis dampak"
   ];
 
   const out = [];
   for (let i = 0; i < count; i += 1) {
     const item = kasus[i % kasus.length];
-    out.push(createQuestion(item.p, item.a, distract, item.e, i % 5));
+    const combinedDistractors = [...(item.d || []), ...distract];
+    out.push(createQuestion(item.p, item.a, combinedDistractors, item.e, i % 5));
   }
   return out;
 }
@@ -1490,10 +1673,13 @@ function renderExam() {
   const section = currentSection();
   const range = getRange(section.id);
   const q = state.questions[state.currentQuestionIndex];
-  dom.questionPanel.classList.remove("transitioning");
-  window.requestAnimationFrame(() => {
-    dom.questionPanel.classList.add("transitioning");
-  });
+  const isQuestionChanged = state.ui.lastRenderedQuestionIndex !== state.currentQuestionIndex;
+  if (isQuestionChanged) {
+    dom.questionPanel.classList.remove("transitioning");
+    window.requestAnimationFrame(() => {
+      dom.questionPanel.classList.add("transitioning");
+    });
+  }
 
   dom.totalTimer.textContent = formatTime(state.totalRemaining);
   dom.segmentTimer.textContent = formatTime(state.segmentRemaining);
@@ -1624,7 +1810,8 @@ function tick() {
     return;
   }
 
-  renderExam();
+  dom.totalTimer.textContent = formatTime(state.totalRemaining);
+  dom.segmentTimer.textContent = formatTime(state.segmentRemaining);
 }
 
 function startExam() {
