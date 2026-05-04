@@ -36,6 +36,7 @@ const state = {
     corporateTheme: false,
     soundOn: true,
     lastRenderedQuestionIndex: -1,
+    lastQuestionBySection: {},
     wrongStreak: 0,
     correctStreak: 0,
     bestCorrectStreak: 0,
@@ -50,6 +51,18 @@ const state = {
     correct: 0
   }
 };
+
+function getSavedQuestionIndexForSection(sectionId) {
+  const saved = state.ui.lastQuestionBySection?.[sectionId];
+  const range = getRange(sectionId);
+  if (!range) {
+    return 0;
+  }
+  if (typeof saved === "number" && saved >= range.start && saved <= range.end) {
+    return saved;
+  }
+  return range.start;
+}
 
 const dom = {
   startScreen: document.getElementById("startScreen"),
@@ -1672,6 +1685,7 @@ function renderTrapGuide(question) {
 function renderExam() {
   const section = currentSection();
   const range = getRange(section.id);
+  state.ui.lastQuestionBySection[section.id] = state.currentQuestionIndex;
   const q = state.questions[state.currentQuestionIndex];
   const isQuestionChanged = state.ui.lastRenderedQuestionIndex !== state.currentQuestionIndex;
   if (isQuestionChanged) {
@@ -1746,6 +1760,22 @@ function renderSegmentPills() {
       pill.classList.add("active");
     }
     pill.innerHTML = `<strong>${section.title}</strong><br>${answered}/${range.count} terjawab • ${section.durationMin} menit`;
+    pill.setAttribute("role", "button");
+    pill.setAttribute("tabindex", "0");
+    pill.title = `Buka ${section.title}`;
+    pill.addEventListener("click", () => {
+      state.currentSegmentIndex = idx;
+      state.currentQuestionIndex = getSavedQuestionIndexForSection(section.id);
+      renderExam();
+    });
+    pill.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        state.currentSegmentIndex = idx;
+        state.currentQuestionIndex = getSavedQuestionIndexForSection(section.id);
+        renderExam();
+      }
+    });
     dom.segmentPills.appendChild(pill);
   });
 }
@@ -1839,6 +1869,7 @@ function startExam() {
   state.ui.trapGuideOpen = false;
   state.ui.focusMode = false;
   state.ui.lastRenderedQuestionIndex = -1;
+  state.ui.lastQuestionBySection = {};
   state.ui.wrongStreak = 0;
   state.ui.correctStreak = 0;
   state.ui.bestCorrectStreak = 0;

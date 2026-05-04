@@ -761,11 +761,22 @@ button:focus-visible {
   padding: 8px;
   background: #f9fbff;
   font-size: 0.86rem;
+  cursor: pointer;
 }
 
 .segment-pill.active {
   border-color: var(--primary);
   background: #eef4ff;
+}
+
+.segment-pill:hover {
+  border-color: #9ebcf1;
+  box-shadow: 0 6px 14px rgba(15, 74, 162, 0.12);
+}
+
+.segment-pill:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 4px rgba(79, 141, 249, 0.2);
 }
 
 .number-grid {
