@@ -88,6 +88,7 @@ const dom = {
   questionMeta: document.getElementById("questionMeta"),
   questionTitle: document.getElementById("questionTitle"),
   questionBody: document.getElementById("questionBody"),
+  questionVisual: document.getElementById("questionVisual"),
   instantStrategy: document.getElementById("instantStrategy"),
   learningCoach: document.getElementById("learningCoach"),
   questionPanel: document.querySelector(".question-panel"),
@@ -246,14 +247,78 @@ function placeCorrectOption(correct, distractors, targetIndex) {
   return options;
 }
 
-function createQuestion(prompt, correctAnswer, distractors, explanation, targetIndex) {
+function createQuestion(prompt, correctAnswer, distractors, explanation, targetIndex, visual = null) {
   const options = placeCorrectOption(correctAnswer, distractors, targetIndex);
   return {
     prompt,
     options,
     correctIndex: options.indexOf(correctAnswer),
     explanation,
-    shortcut: ""
+    shortcut: "",
+    visual
+  };
+}
+
+function createSvgDataUri(inner, width = 760, height = 220) {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${width}' height='${height}' viewBox='0 0 ${width} ${height}'><defs><linearGradient id='bg' x1='0' x2='1' y1='0' y2='1'><stop offset='0%' stop-color='#f7fbff'/><stop offset='100%' stop-color='#e9f2ff'/></linearGradient></defs><rect width='100%' height='100%' fill='url(#bg)' rx='18' ry='18'/>${inner}</svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+function createSequenceVisual(sequence) {
+  const all = [...sequence, "?"];
+  const gap = 18;
+  const boxW = 92;
+  const boxH = 86;
+  const totalW = (boxW * all.length) + (gap * (all.length - 1));
+  const startX = Math.max(18, Math.floor((760 - totalW) / 2));
+  const y = 64;
+  const boxes = all.map((value, idx) => {
+    const x = startX + (idx * (boxW + gap));
+    const fill = idx === all.length - 1 ? "#dbe9ff" : "#ffffff";
+    const stroke = idx === all.length - 1 ? "#4a7fda" : "#9bb9e8";
+    return `<rect x='${x}' y='${y}' width='${boxW}' height='${boxH}' rx='14' fill='${fill}' stroke='${stroke}' stroke-width='2'/><text x='${x + (boxW / 2)}' y='${y + 52}' text-anchor='middle' font-family='Inter, Arial' font-size='34' font-weight='700' fill='#1f3f75'>${value}</text>`;
+  }).join("");
+  return {
+    src: createSvgDataUri(boxes),
+    caption: "Pola deret visual. Tentukan elemen terakhir yang benar."
+  };
+}
+
+function createShapeVisual(kind) {
+  let inner = "";
+  if (kind === "persegi") {
+    inner = "<rect x='300' y='45' width='160' height='160' fill='#3f78da' stroke='#1e4c9c' stroke-width='6'/>";
+  } else if (kind === "trapesium") {
+    inner = "<polygon points='250,190 510,190 450,60 310,60' fill='#3f78da' stroke='#1e4c9c' stroke-width='6'/>";
+  } else if (kind === "segitiga_sama_sisi") {
+    inner = "<polygon points='380,42 520,190 240,190' fill='#3f78da' stroke='#1e4c9c' stroke-width='6'/>";
+  } else if (kind === "lingkaran") {
+    inner = "<circle cx='380' cy='120' r='82' fill='#3f78da' stroke='#1e4c9c' stroke-width='6'/>";
+  } else if (kind === "sudut_tumpul") {
+    inner = "<line x1='200' y1='170' x2='380' y2='170' stroke='#1e4c9c' stroke-width='8'/><line x1='200' y1='170' x2='330' y2='75' stroke='#1e4c9c' stroke-width='8'/><path d='M244 168 A44 44 0 0 1 264 136' fill='none' stroke='#3f78da' stroke-width='6'/>";
+  } else {
+    inner = "<rect x='280' y='50' width='200' height='140' fill='#3f78da' stroke='#1e4c9c' stroke-width='6'/>";
+  }
+  return {
+    src: createSvgDataUri(inner),
+    caption: "Perhatikan gambar bangun berikut."
+  };
+}
+
+function createSpatialVisual(kind) {
+  let inner = "";
+  if (kind === "kubus_rotasi") {
+    inner = "<polygon points='235,70 355,50 500,92 380,112' fill='#d7e7ff' stroke='#2c5ea8' stroke-width='4'/><polygon points='235,70 235,165 380,207 380,112' fill='#b5cff7' stroke='#2c5ea8' stroke-width='4'/><polygon points='380,112 500,92 500,187 380,207' fill='#8cb4ed' stroke='#2c5ea8' stroke-width='4'/><text x='292' y='118' font-size='22' fill='#1f3f75' font-weight='700' font-family='Inter, Arial'>DEPAN</text><text x='425' y='160' font-size='22' fill='#1f3f75' font-weight='700' font-family='Inter, Arial'>KANAN</text>";
+  } else if (kind === "skala_peta") {
+    inner = "<rect x='120' y='52' width='230' height='140' rx='14' fill='#c9defa' stroke='#2c5ea8' stroke-width='4'/><rect x='430' y='74' width='155' height='95' rx='12' fill='#9fc2f4' stroke='#2c5ea8' stroke-width='4'/><text x='170' y='132' font-size='24' fill='#1f3f75' font-weight='700' font-family='Inter, Arial'>1 : 50.000</text><text x='450' y='132' font-size='22' fill='#1f3f75' font-weight='700' font-family='Inter, Arial'>1 : 100.000</text>";
+  } else if (kind === "cermin_vertikal") {
+    inner = "<line x1='380' y1='30' x2='380' y2='195' stroke='#2c5ea8' stroke-width='5' stroke-dasharray='8 8'/><polygon points='190,165 275,70 315,165' fill='#83ace8' stroke='#2c5ea8' stroke-width='5'/><polygon points='570,165 485,70 445,165' fill='#b7d2f8' stroke='#2c5ea8' stroke-width='5'/>";
+  } else {
+    inner = "<rect x='245' y='58' width='130' height='130' fill='#d6e6ff' stroke='#2c5ea8' stroke-width='5'/><rect x='390' y='58' width='130' height='130' fill='#93b8ef' stroke='#2c5ea8' stroke-width='5'/><text x='300' y='129' text-anchor='middle' font-size='20' fill='#1f3f75' font-weight='700' font-family='Inter, Arial'>A</text><text x='455' y='129' text-anchor='middle' font-size='20' fill='#1f3f75' font-weight='700' font-family='Inter, Arial'>B</text>";
+  }
+  return {
+    src: createSvgDataUri(inner),
+    caption: "Perhatikan ilustrasi ruang berikut."
   };
 }
 
@@ -1077,59 +1142,143 @@ function generateBahasa(count) {
     ["ketua", "koordinasi", "bendahara", "pencatatan keuangan"],
     ["evaluasi", "perbaikan", "monitoring", "pengendalian"]
   ];
+  const simpulanParagraf = [
+    [
+      "Digitalisasi koperasi meningkatkan kecepatan layanan, tetapi membutuhkan pelatihan SDM dan SOP yang jelas. Tanpa dua hal itu, adopsi sistem cenderung menurun.",
+      "Digitalisasi efektif jika didukung pelatihan SDM dan SOP.",
+      "Simpulan yang tepat merangkum hubungan sebab-akibat utama dalam paragraf."
+    ],
+    [
+      "Partisipasi anggota naik ketika jadwal rapat fleksibel, materi rapat relevan, dan tindak lanjut keputusan terdokumentasi.",
+      "Partisipasi anggota meningkat bila rapat dirancang relevan dan terstruktur.",
+      "Simpulan merangkum faktor utama yang mendorong peningkatan partisipasi."
+    ],
+    [
+      "Program pembiayaan mikro berhasil ketika seleksi calon penerima akurat, pendampingan rutin berjalan, dan evaluasi dampak dilakukan berkala.",
+      "Keberhasilan pembiayaan mikro ditentukan seleksi, pendampingan, dan evaluasi berkala.",
+      "Simpulan menggabungkan tiga syarat inti keberhasilan program."
+    ]
+  ];
+  const ejaanBaku = [
+    ["resiko", "risiko"],
+    ["aktifitas", "aktivitas"],
+    ["obyektif", "objektif"],
+    ["analisa", "analisis"],
+    ["praktek", "praktik"],
+    ["ijin", "izin"]
+  ];
   const distractWord = [
+    "bertingkat",
     "sementara",
-    "bertahap",
-    "biasa",
-    "regional",
-    "manual",
-    "terbuka",
-    "seragam",
-    "parsial"
+    "terbatas",
+    "parsial",
+    "prosedural",
+    "operasional",
+    "situasional",
+    "teknis"
+  ];
+  const sinonimDistractorMap = {
+    akuntabel: ["konsisten", "terbuka", "partisipatif", "berorientasi hasil"],
+    koordinasi: ["komunikasi", "komando", "konsolidasi", "sinkronisasi terbatas"],
+    komprehensif: ["parsial", "garis besar", "sederhana", "selektif"],
+    prioritas: ["pendukung", "pelengkap", "tambahan", "opsional"],
+    mitigasi: ["adaptasi", "reaksi", "kompensasi", "normalisasi"],
+    resiliensi: ["ketahanan awal", "kesiapsiagaan", "respons cepat", "pemulihan sesaat"],
+    konsensus: ["voting mayoritas", "instruksi pimpinan", "kompromi sepihak", "musyawarah awal"],
+    inklusif: ["eksklusif", "selektif", "terbatas", "sebagian pihak"]
+  };
+  const antonimDistractorMap = {
+    objektif: ["argumentatif", "rasional", "kritis", "kontekstual"],
+    transparan: ["terstruktur", "terpadu", "terukur", "terjadwal"],
+    stabil: ["dinamis", "konstan", "tetap", "berimbang"],
+    adaptif: ["responsif", "fleksibel", "proaktif", "situasional"],
+    efisien: ["hemat", "optimal", "produktif", "efektif"],
+    progresif: ["konservatif", "evolutif", "incremental", "berkelanjutan"],
+    kolaboratif: ["kooperatif", "partisipatif", "kolegial", "sinergis"],
+    akurat: ["presisi rendah", "aproksimatif", "indikatif", "estimatif"]
+  };
+  const simpulanDistractor = [
+    [
+      "Digitalisasi cukup didorong oleh pengadaan aplikasi tanpa pembinaan SDM.",
+      "SOP dapat disusun setelah implementasi berjalan penuh.",
+      "Kecepatan layanan otomatis meningkat meski SDM tidak dilatih.",
+      "Penurunan adopsi lebih dipengaruhi faktor eksternal semata."
+    ],
+    [
+      "Kenaikan partisipasi rapat terutama dipicu kewajiban kehadiran anggota.",
+      "Dokumentasi keputusan tidak berkorelasi dengan partisipasi anggota.",
+      "Jadwal rapat fleksibel cukup tanpa perbaikan kualitas materi.",
+      "Relevansi materi rapat tidak memengaruhi antusiasme anggota."
+    ],
+    [
+      "Keberhasilan pembiayaan mikro terutama ditentukan besaran plafon pinjaman.",
+      "Pendampingan cukup dilakukan di awal program tanpa evaluasi lanjutan.",
+      "Seleksi penerima dapat dipermudah selama penyaluran cepat tercapai.",
+      "Evaluasi dampak hanya diperlukan pada akhir siklus program."
+    ]
   ];
 
   const out = [];
   for (let i = 0; i < count; i += 1) {
-    const mode = i % 4;
+    const mode = i % 6;
     if (mode === 0) {
       const [kata, benar] = sinonim[i % sinonim.length];
       out.push(createQuestion(
-        `Pilih sinonim paling tepat dari kata "${kata}" dalam konteks administrasi publik.`,
+        `Dalam konteks tata kelola layanan publik, sinonim yang paling tepat untuk kata "${kata}" adalah ...`,
         benar,
-        distractWord.concat(sinonim.map((x) => x[1])),
-        `Kata "${kata}" paling tepat diganti dengan "${benar}" karena maknanya setara dalam konteks formal.`,
+        (sinonimDistractorMap[kata] || []).concat(distractWord).concat(sinonim.map((x) => x[1])),
+        `Kunci: "${benar}". Dalam konteks formal, kata tersebut memiliki makna paling setara dengan "${kata}" dibanding opsi lain.`,
         i % 5
       ));
     } else if (mode === 1) {
       const [kata, benar] = antonim[i % antonim.length];
       out.push(createQuestion(
-        `Pilih antonim paling tepat dari kata "${kata}".`,
+        `Pilih antonim yang paling tepat untuk kata "${kata}" dalam ragam bahasa formal.`,
         benar,
-        distractWord.concat(antonim.map((x) => x[1])),
-        `Lawan kata "${kata}" adalah "${benar}" karena menunjukkan makna yang berlawanan langsung.`,
+        (antonimDistractorMap[kata] || []).concat(distractWord).concat(antonim.map((x) => x[1])),
+        `Kunci: "${benar}". Opsi tersebut berlawanan makna secara langsung dengan "${kata}".`,
         i % 5
       ));
     } else if (mode === 2) {
       const [soalKalimat, benar, pembahasan] = kalimatEfektif[i % kalimatEfektif.length];
+      const distractKalimat = [
+        benar.replace(" meningkatkan mutu layanan", " untuk meningkatkan mutu layanan"),
+        benar.replace(" agar ", " sehingga "),
+        benar.replace(" wajib ", " diwajibkan untuk "),
+        soalKalimat
+      ];
       out.push(createQuestion(
-        `Manakah perbaikan kalimat efektif yang paling tepat dari kalimat berikut?\n"${soalKalimat}"`,
+        `Perhatikan kalimat berikut.\n"${soalKalimat}"\nPerbaikan kalimat efektif yang paling tepat adalah ...`,
         benar,
-        [
-          `${benar} untuk peningkatan`,
-          soalKalimat,
-          "Kalimat tidak perlu diubah",
-          "Pengurus koperasi dipercepat agar layanan"
-        ],
-        pembahasan,
+        distractKalimat,
+        `Kunci: "${benar}". ${pembahasan}`,
+        i % 5
+      ));
+    } else if (mode === 3) {
+      const [a, b, c, benar] = analogi[i % analogi.length];
+      out.push(createQuestion(
+        `Tentukan pasangan analogi yang setara.\n${a} : ${b} = ${c} : ...`,
+        benar,
+        ["pengawasan", "pelaporan", "penjadwalan", "standardisasi", "delegasi"],
+        `Kunci: "${benar}". Relasi ${a}-${b} menunjukkan keterkaitan fungsi/hasil; pasangan ${c}-${benar} paling sepadan.`,
+        i % 5
+      ));
+    } else if (mode === 4) {
+      const [paragraf, benar, pembahasan] = simpulanParagraf[i % simpulanParagraf.length];
+      out.push(createQuestion(
+        `Bacalah paragraf berikut.\n"${paragraf}"\nSimpulan yang paling tepat adalah ...`,
+        benar,
+        simpulanDistractor[i % simpulanDistractor.length],
+        `Kunci: "${benar}". ${pembahasan}`,
         i % 5
       ));
     } else {
-      const [a, b, c, benar] = analogi[i % analogi.length];
+      const [tidakBaku, baku] = ejaanBaku[i % ejaanBaku.length];
       out.push(createQuestion(
-        `${a} : ${b} = ${c} : ...`,
-        benar,
-        ["pengawasan", "pelaporan", "penjadwalan", "standarisasi", "delegasi"],
-        `Hubungan ${a}-${b} adalah relasi proses dan hasil; relasi ${c} yang setara adalah ${benar}.`,
+        `Menurut kaidah PUEBI, bentuk baku yang tepat dari kata "${tidakBaku}" adalah ...`,
+        baku,
+        ejaanBaku.map((x) => x[1]).concat(["koordinatif", "adaptif"]).filter((x) => x !== baku),
+        `Kunci: "${baku}". Berdasarkan kaidah PUEBI, bentuk tidak baku "${tidakBaku}" dibakukan menjadi "${baku}".`,
         i % 5
       ));
     }
@@ -1148,10 +1297,10 @@ function generateHitungan(count) {
       const turun = 5 + (i % 3) * 5;
       const akhir = Math.round(modal * (1 + (naik / 100)) * (1 - (turun / 100)));
       out.push(createQuestion(
-        `Modal unit usaha di Desa ${desa[i % desa.length]} sebesar ${modal} juta naik ${naik}% lalu turun ${turun}%. Nilai akhirnya adalah ...`,
+        `Unit usaha di Desa ${desa[i % desa.length]} memiliki modal awal ${modal} juta rupiah. Setelah naik ${naik}% dan kemudian turun ${turun}%, nilai akhir modal adalah ...`,
         `${akhir} juta`,
         [`${akhir - 6} juta`, `${akhir + 6} juta`, `${akhir - 10} juta`, `${akhir + 10} juta`],
-        `Nilai akhir = ${modal} x (1+${naik}/100) x (1-${turun}/100) = ${akhir} juta.`,
+        `Gunakan perubahan bertingkat: ${modal} x (1 + ${naik}/100) x (1 - ${turun}/100) = ${akhir}. Jadi modal akhir ${akhir} juta rupiah.`,
         i % 5
       ));
     } else if (mode === 1) {
@@ -1160,10 +1309,10 @@ function generateHitungan(count) {
       const petugasBaru = petugasAwal + 3;
       const benar = Math.ceil((petugasAwal * hariAwal) / petugasBaru);
       out.push(createQuestion(
-        `${petugasAwal} petugas menyelesaikan verifikasi data dalam ${hariAwal} hari. Jika petugas menjadi ${petugasBaru} orang (kecepatan sama), waktu yang dibutuhkan adalah ...`,
+        `${petugasAwal} petugas menyelesaikan verifikasi data dalam ${hariAwal} hari. Jika jumlah petugas ditambah menjadi ${petugasBaru} orang dengan produktivitas sama, waktu yang dibutuhkan adalah ...`,
         `${benar} hari`,
         [`${benar - 2} hari`, `${benar - 1} hari`, `${benar + 1} hari`, `${benar + 2} hari`],
-        `Perbandingan berbalik nilai: p1 x h1 = p2 x h2 -> h2 = (${petugasAwal} x ${hariAwal})/${petugasBaru} = ${benar} hari (dibulatkan ke atas).`,
+        `Gunakan perbandingan berbalik nilai: p1 x t1 = p2 x t2. Maka t2 = (${petugasAwal} x ${hariAwal})/${petugasBaru} = ${benar} hari (dibulatkan ke atas).`,
         i % 5
       ));
     } else if (mode === 2) {
@@ -1173,10 +1322,10 @@ function generateHitungan(count) {
       const jumlah4 = empatBulan.reduce((s, x) => s + x, 0);
       const benar = (rataRata * totalBulan) - jumlah4;
       out.push(createQuestion(
-        `Rata-rata skor monitoring 5 bulan adalah ${rataRata}. Empat bulan pertama berturut-turut ${empatBulan.join(", ")}. Skor bulan ke-5 adalah ...`,
+        `Rata-rata skor monitoring selama 5 bulan adalah ${rataRata}. Jika skor 4 bulan pertama berturut-turut ${empatBulan.join(", ")}, skor bulan ke-5 adalah ...`,
         String(benar),
         [String(benar - 2), String(benar + 2), String(benar - 4), String(benar + 4)],
-        `Jumlah total 5 bulan = ${rataRata} x 5 = ${rataRata * 5}. Jumlah 4 bulan = ${jumlah4}. Bulan ke-5 = ${(rataRata * 5) - jumlah4}.`,
+        `Total skor 5 bulan = ${rataRata} x 5 = ${rataRata * 5}. Jumlah 4 bulan pertama = ${jumlah4}. Jadi skor bulan ke-5 = ${(rataRata * 5) - jumlah4}.`,
         i % 5
       ));
     } else if (mode === 3) {
@@ -1185,10 +1334,10 @@ function generateHitungan(count) {
       const sukuKe = 6 + (i % 3);
       const benar = barisAwal + ((sukuKe - 1) * beda);
       out.push(createQuestion(
-        `Sebuah deret aritmetika memiliki suku pertama ${barisAwal} dan beda ${beda}. Nilai suku ke-${sukuKe} adalah ...`,
+        `Suatu deret aritmetika memiliki suku pertama ${barisAwal} dan beda ${beda}. Nilai suku ke-${sukuKe} adalah ...`,
         String(benar),
         [String(benar - beda), String(benar + beda), String(benar - 2), String(benar + 2)],
-        `Un = a + (n-1)b = ${barisAwal} + (${sukuKe}-1) x ${beda} = ${benar}.`,
+        `Gunakan rumus Un = a + (n-1)b, sehingga U${sukuKe} = ${barisAwal} + (${sukuKe}-1) x ${beda} = ${benar}.`,
         i % 5
       ));
     } else if (mode === 4) {
@@ -1196,10 +1345,10 @@ function generateHitungan(count) {
       const bHari = 6 + (i % 4);
       const benar = Math.round((1 / ((1 / aHari) + (1 / bHari))) * 10) / 10;
       out.push(createQuestion(
-        `Petugas A menyelesaikan validasi data dalam ${aHari} hari, petugas B dalam ${bHari} hari. Jika bekerja bersama, pekerjaan selesai sekitar ...`,
+        `Petugas A menyelesaikan validasi data dalam ${aHari} hari, sedangkan petugas B dalam ${bHari} hari. Jika keduanya bekerja bersama dengan laju konstan, pekerjaan selesai sekitar ...`,
         `${benar} hari`,
         [`${(benar + 0.8).toFixed(1)} hari`, `${(benar + 1.2).toFixed(1)} hari`, `${(benar - 0.6).toFixed(1)} hari`, `${(benar + 1.8).toFixed(1)} hari`],
-        `Laju gabungan = 1/${aHari} + 1/${bHari}. Waktu = 1/laju = ${benar} hari.`,
+        `Laju kerja gabungan = 1/${aHari} + 1/${bHari}. Maka waktu = 1/(laju gabungan) = ${benar} hari.`,
         i % 5
       ));
     } else if (mode === 5) {
@@ -1207,7 +1356,7 @@ function generateHitungan(count) {
       const untung = 15 + (i % 4) * 5;
       const benar = Math.round(beli * (1 + (untung / 100)));
       out.push(createQuestion(
-        `Sebuah produk koperasi dibeli Rp${beli.toLocaleString("id-ID")} dan dijual dengan keuntungan ${untung}%. Harga jualnya adalah ...`,
+        `Suatu produk koperasi dibeli seharga Rp${beli.toLocaleString("id-ID")} lalu dijual dengan keuntungan ${untung}%. Harga jual yang tepat adalah ...`,
         `Rp${benar.toLocaleString("id-ID")}`,
         [
           `Rp${(benar - 2000).toLocaleString("id-ID")}`,
@@ -1215,7 +1364,7 @@ function generateHitungan(count) {
           `Rp${(benar - 4000).toLocaleString("id-ID")}`,
           `Rp${(benar + 4000).toLocaleString("id-ID")}`
         ],
-        `Harga jual = harga beli x (1 + untung/100) = Rp${benar.toLocaleString("id-ID")}.`,
+        `Harga jual = harga beli x (1 + persentase untung) = ${beli} x (1 + ${untung}/100) = Rp${benar.toLocaleString("id-ID")}.`,
         i % 5
       ));
     } else if (mode === 6) {
@@ -1223,10 +1372,10 @@ function generateHitungan(count) {
       const laki = 45 + (i % 4) * 5;
       const benar = Math.round((laki / total) * 100);
       out.push(createQuestion(
-        `Dalam pelatihan anggota berjumlah ${total} orang, peserta laki-laki ${laki} orang. Persentase peserta laki-laki adalah ...`,
+        `Dalam pelatihan yang diikuti ${total} peserta, jumlah peserta laki-laki adalah ${laki} orang. Persentase peserta laki-laki adalah ...`,
         `${benar}%`,
         [`${benar - 5}%`, `${benar + 5}%`, `${benar - 10}%`, `${benar + 10}%`],
-        `Persentase = ${laki}/${total} x 100% = ${benar}%.`,
+        `Persentase peserta laki-laki = (${laki}/${total}) x 100% = ${benar}%.`,
         i % 5
       ));
     } else {
@@ -1235,10 +1384,10 @@ function generateHitungan(count) {
       const benar = Math.round((jarak / kecepatan) * 100) / 100;
       const menit = Math.round(benar * 60);
       out.push(createQuestion(
-        `Tim monitoring menempuh jarak ${jarak} km dengan kecepatan rata-rata ${kecepatan} km/jam. Waktu tempuhnya adalah ...`,
+        `Tim monitoring menempuh jarak ${jarak} km dengan kecepatan rata-rata ${kecepatan} km/jam. Waktu tempuh yang diperlukan adalah ...`,
         `${menit} menit`,
         [`${menit - 15} menit`, `${menit + 15} menit`, `${menit - 30} menit`, `${menit + 30} menit`],
-        `Waktu = jarak/kecepatan = ${jarak}/${kecepatan} = ${benar} jam = ${menit} menit.`,
+        `Waktu = jarak/kecepatan = ${jarak}/${kecepatan} = ${benar} jam. Konversi ke menit: ${menit} menit.`,
         i % 5
       ));
     }
@@ -1257,14 +1406,61 @@ function generatePengetahuanUmum(count) {
     ["Rencana pembangunan jangka menengah daerah disebut ...", "RPJMD", "RPJMD menjadi pedoman pembangunan daerah selama masa jabatan kepala daerah."],
     ["Asas utama pelayanan publik yang baik adalah ...", "Cepat, mudah, dan transparan", "Pelayanan publik berkualitas berorientasi pada kemudahan, kecepatan, dan keterbukaan."],
     ["Mata uang resmi Negara Republik Indonesia adalah ...", "Rupiah", "Sesuai ketentuan, Rupiah merupakan alat pembayaran yang sah di Indonesia."],
-    ["Pemilu nasional di Indonesia dilaksanakan setiap ...", "5 tahun", "Siklus pemilu nasional dilaksanakan 5 tahunan."]
+    ["Pemilu nasional di Indonesia dilaksanakan setiap ...", "5 tahun", "Siklus pemilu nasional dilaksanakan 5 tahunan."],
+    ["Prinsip negara hukum menempatkan seluruh tindakan pemerintah harus berdasarkan ...", "Peraturan perundang-undangan", "Asas legalitas mewajibkan tindakan pemerintahan berbasis aturan hukum."],
+    ["Lembaga yang berwenang memeriksa laporan keuangan pemerintah adalah ...", "BPK", "Pemeriksaan pengelolaan dan tanggung jawab keuangan negara dilakukan oleh BPK."],
+    ["Dokumen perencanaan pembangunan daerah lima tahunan adalah ...", "RPJMD", "RPJMD menjadi acuan pembangunan daerah dalam periode kepala daerah."],
+    ["Salah satu indikator tata kelola publik yang baik adalah ...", "Akuntabilitas", "Akuntabilitas memastikan setiap kebijakan dapat dipertanggungjawabkan."],
+    ["Asas penyelenggaraan pelayanan publik yang menekankan keterbukaan informasi adalah ...", "Transparansi", "Transparansi membuat proses layanan mudah dipantau publik."],
+    ["Nilai yang dikedepankan sila ke-5 Pancasila adalah ...", "Keadilan sosial", "Sila kelima menegaskan keadilan sosial bagi seluruh rakyat Indonesia."],
+    ["Dokumen perencanaan pembangunan nasional 20 tahunan disebut ...", "RPJPN", "RPJPN menjadi arah pembangunan nasional jangka panjang."],
+    ["Fungsi utama APBN dalam kebijakan publik adalah ...", "Pedoman penerimaan dan belanja negara", "APBN merupakan instrumen fiskal pemerintah untuk menjalankan program negara."],
+    ["Asas desentralisasi memberi kewenangan kepada ...", "Pemerintah daerah", "Desentralisasi mendorong daerah mengatur urusan pemerintahan sesuai kewenangannya."],
+    ["Instrumen hukum tertinggi di Indonesia adalah ...", "UUD 1945", "UUD 1945 merupakan norma hukum dasar tertinggi."],
+    ["Makna utama Bhinneka Tunggal Ika dalam kebijakan publik adalah ...", "Persatuan dalam keberagaman", "Nilai ini menegaskan keberagaman harus dikelola dalam semangat persatuan."],
+    ["Lembaga yang berwenang mengadili sengketa hasil pemilu adalah ...", "Mahkamah Konstitusi", "Sengketa hasil pemilu nasional menjadi ranah Mahkamah Konstitusi."],
+    ["Kebijakan publik yang baik harus memiliki indikator ...", "Terukur", "Indikator terukur diperlukan agar evaluasi kebijakan objektif."],
+    ["Pelaksanaan musrenbang bertujuan utama untuk ...", "Menyerap aspirasi perencanaan pembangunan", "Musrenbang menjadi forum partisipatif penyusunan rencana pembangunan."]
   ];
 
-  const distract = ["Perppu", "KPK", "MPR", "Mahkamah Agung", "DPRD", "RPJPD", "4 tahun", "Dolar", "Tertutup", "Individualisme"];
+  const categoryDistractorMap = {
+    "Mahkamah Konstitusi": ["Mahkamah Agung", "Komisi Yudisial", "MPR", "DPR"],
+    BPK: ["BPKP", "Kementerian Keuangan", "Inspektorat Jenderal", "OJK"],
+    Presidensial: ["Parlementer", "Semi-presidensial", "Monarki konstitusional", "Federal"],
+    "Persatuan Indonesia": ["Keadilan sosial", "Kemanusiaan adil dan beradab", "Kerakyatan", "Ketuhanan Yang Maha Esa"],
+    "Berbeda-beda tetapi tetap satu": ["Kesatuan tanpa perbedaan", "Kebebasan tanpa batas", "Keberagaman tanpa persatuan", "Persamaan mutlak"],
+    RPJMN: ["RPJPN", "RPJMD", "RKP", "Renstra K/L"],
+    RPJMD: ["RPJMN", "RPJPD", "RKPD", "Renja OPD"],
+    "Cepat, mudah, dan transparan": ["Lambat namun akurat", "Prosedural ketat", "Tertutup dan formal", "Berjenjang tanpa kepastian"],
+    Rupiah: ["Dolar AS", "Euro", "Yen", "Ringgit"],
+    "5 tahun": ["4 tahun", "6 tahun", "7 tahun", "3 tahun"],
+    "Peraturan perundang-undangan": ["Diskresi pejabat", "Kebiasaan birokrasi", "Arahan lisan", "Kesepakatan informal"],
+    Akuntabilitas: ["Popularitas", "Sentralisasi", "Dominasi mayoritas", "Diskresi personal"],
+    Transparansi: ["Kerahasiaan internal", "Eksklusivitas informasi", "Pembatasan akses data", "Komunikasi satu arah"],
+    "Keadilan sosial": ["Persatuan nasional", "Kerakyatan", "Ketuhanan", "Kemanusiaan"],
+    RPJPN: ["RPJMN", "RPJPD", "RKP", "RPJMD"],
+    "Pedoman penerimaan dan belanja negara": ["Dokumen audit internal", "Rencana kerja kementerian", "Instrumen moneter bank sentral", "Laporan pertanggungjawaban tahunan"],
+    "Pemerintah daerah": ["Pemerintah pusat", "Lembaga yudikatif", "Lembaga legislatif nasional", "Badan usaha milik negara"],
+    "UUD 1945": ["Undang-Undang", "Peraturan Pemerintah", "Perpres", "Permen"],
+    "Persatuan dalam keberagaman": ["Asimilasi total", "Dominasi kelompok mayoritas", "Keseragaman budaya", "Kompetisi antarkelompok"],
+    Terukur: ["Normatif", "Abstrak", "Generik", "Simbolik"],
+    "Menyerap aspirasi perencanaan pembangunan": ["Menyusun laporan realisasi anggaran", "Menetapkan sanksi administratif", "Menghimpun pajak daerah", "Melakukan inspeksi mendadak"]
+  };
+  const globalDistract = [
+    "Mahkamah Agung", "BPKP", "MPR", "DPR", "DPD",
+    "RPJPD", "RKP", "RKPD", "4 tahun", "6 tahun",
+    "Sentralisasi", "Dekonsentrasi", "Dolar AS", "Diskresi tanpa aturan"
+  ];
   const out = [];
   for (let i = 0; i < count; i += 1) {
     const item = bank[i % bank.length];
-    out.push(createQuestion(item[0], item[1], distract.concat(bank.map((b) => b[1])), item[2], i % 5));
+    out.push(createQuestion(
+      `Pilih jawaban yang paling tepat.\n${item[0]}`,
+      item[1],
+      (categoryDistractorMap[item[1]] || []).concat(globalDistract).concat(bank.map((b) => b[1])),
+      `Kunci: "${item[1]}". ${item[2]}`,
+      i % 5
+    ));
   }
   return out;
 }
@@ -1272,7 +1468,7 @@ function generatePengetahuanUmum(count) {
 function generatePola(count) {
   const out = [];
   for (let i = 0; i < count; i += 1) {
-    const mode = i % 3;
+    const mode = i % 4;
     if (mode === 0) {
       const start = 2 + (i % 5);
       const diff = 3 + (i % 4);
@@ -1284,35 +1480,69 @@ function generatePola(count) {
         i % 5
       );
       out.push({
-        prompt: `Pola angka: ${seq.join(", ")}, ... Angka berikutnya adalah ...`,
+        prompt: `Perhatikan deret berikut: ${seq.join(", ")}. Nilai suku berikutnya adalah ...`,
         options,
         correctIndex: options.indexOf(benar),
-        explanation: `Pola bertambah ${diff} setiap langkah, jadi angka berikutnya ${benar}.`
+        explanation: `Kunci: ${benar}. Selisih antarsuku konstan +${diff}, sehingga suku berikutnya = ${seq[seq.length - 1]} + ${diff}.`,
+        visual: createSequenceVisual(seq)
       });
     } else if (mode === 1) {
       const a = 2 + (i % 3);
-      const seq = [a, a * 2, a * 4, a * 8];
-      const benar = String(a * 16);
+      const ratio = i % 2 === 0 ? 2 : 3;
+      const seq = [a, a * ratio, a * ratio * ratio, a * ratio * ratio * ratio];
+      const benar = String(a * ratio * ratio * ratio * ratio);
       const options = placeCorrectOption(
         benar,
-        [String(a * 12), String(a * 14), String(a * 18), String(a * 20)],
+        [
+          String(seq[seq.length - 1] + ratio),
+          String(seq[seq.length - 1] * (ratio + 1)),
+          String(Number(benar) - ratio),
+          String(Number(benar) + ratio)
+        ],
         i % 5
       );
       out.push({
-        prompt: `Pola angka: ${seq.join(", ")}, ... Angka berikutnya adalah ...`,
+        prompt: `Perhatikan deret berikut: ${seq.join(", ")}. Nilai suku berikutnya adalah ...`,
         options,
         correctIndex: options.indexOf(benar),
-        explanation: `Pola dikali 2, sehingga suku berikutnya ${benar}.`
+        explanation: `Kunci: ${benar}. Pola deret adalah dikali ${ratio} secara konsisten pada setiap langkah.`,
+        visual: createSequenceVisual(seq)
+      });
+    } else if (mode === 2) {
+      const start = 5 + (i % 4);
+      const inc1 = 2 + (i % 3);
+      const inc2 = inc1 + 2;
+      const inc3 = inc2 + 2;
+      const seq = [start, start + inc1, start + inc1 + inc2, start + inc1 + inc2 + inc3];
+      const nextInc = inc3 + 2;
+      const benar = String(seq[seq.length - 1] + nextInc);
+      const options = placeCorrectOption(
+        benar,
+        [
+          String(seq[seq.length - 1] + inc3),
+          String(seq[seq.length - 1] + nextInc + 2),
+          String(Number(benar) - 2),
+          String(Number(benar) + 4)
+        ],
+        i % 5
+      );
+      out.push({
+        prompt: `Perhatikan deret berikut: ${seq.join(", ")}. Nilai suku berikutnya adalah ...`,
+        options,
+        correctIndex: options.indexOf(benar),
+        explanation: `Kunci: ${benar}. Selisih antarsuku membentuk pola naik +2: +${inc1}, +${inc2}, +${inc3}, sehingga berikutnya +${nextInc}.`,
+        visual: createSequenceVisual(seq)
       });
     } else {
       const seq = ["A", "C", "F", "J", "O"];
       const benar = "U";
-      const options = placeCorrectOption(benar, ["T", "V", "S", "R", "Q"], i % 5);
+      const options = placeCorrectOption(benar, ["T", "V", "W", "S", "R"], i % 5);
       out.push({
-        prompt: `Pola huruf: ${seq.join(", ")}, ... Huruf berikutnya adalah ...`,
+        prompt: `Perhatikan deret huruf berikut: ${seq.join(", ")}. Huruf pada posisi berikutnya adalah ...`,
         options,
         correctIndex: options.indexOf(benar),
-        explanation: "Lompatan alfabet berturut-turut +2, +3, +4, +5, sehingga berikutnya +6 yaitu U."
+        explanation: "Kunci: U. Pola lompatan alfabet berturut-turut adalah +2, +3, +4, +5, sehingga lompatan berikutnya +6 menghasilkan U.",
+        visual: createSequenceVisual(seq)
       });
     }
   }
@@ -1321,58 +1551,75 @@ function generatePola(count) {
 
 function generateAbstraksiRuang(count) {
   const bank = [
-    [
-      "Sebuah kubus diputar 90 derajat searah jarum jam pada sumbu vertikal. Sisi depan menjadi ...",
-      "Sisi kanan",
-      "Pada rotasi 90 derajat vertikal, sisi kanan berpindah ke depan."
-    ],
-    [
-      "Jika peta diperkecil dengan skala lebih besar (misal dari 1:50.000 ke 1:100.000), maka objek pada peta terlihat ...",
-      "Lebih kecil",
-      "Semakin besar penyebut skala, objek tergambar semakin kecil."
-    ],
-    [
-      "Bangun 3D dengan 2 alas lingkaran dan 1 sisi lengkung adalah ...",
-      "Tabung",
-      "Tabung memiliki dua alas lingkaran sejajar dan selimut lengkung."
-    ],
-    [
-      "Bila balok memiliki panjang 8, lebar 4, tinggi 3, maka volumenya ...",
-      "96",
-      "Volume balok = p x l x t = 8 x 4 x 3 = 96."
-    ],
-    [
-      "Jaring-jaring yang dapat membentuk kubus harus terdiri dari ...",
-      "6 persegi",
-      "Kubus memiliki enam sisi persegi kongruen."
-    ],
-    [
-      "Jika arah utara berada di atas peta, maka arah timur berada di ...",
-      "Kanan",
-      "Orientasi peta standar menempatkan timur di sebelah kanan."
-    ],
-    [
-      "Bangun ruang yang semua rusuknya sama panjang dan semua sisinya persegi adalah ...",
-      "Kubus",
-      "Definisi kubus: semua rusuk sama, sisi berbentuk persegi."
-    ],
-    [
-      "Jika sebuah objek dicerminkan pada sumbu vertikal, maka sisi kiri akan berpindah ke ...",
-      "Sisi kanan",
-      "Pencerminan vertikal menukar posisi kiri dan kanan."
-    ]
+    {
+      p: "Sebuah kubus diputar 90 derajat searah jarum jam terhadap sumbu vertikal. Posisi sisi depan setelah rotasi adalah ...",
+      a: "Sisi kanan",
+      e: "Kunci: Sisi kanan. Pada rotasi 90 derajat searah jarum jam (dilihat dari atas), sisi kanan berpindah ke posisi depan.",
+      d: ["Sisi kiri", "Sisi belakang", "Sisi atas", "Sisi bawah"],
+      visual: createSpatialVisual("kubus_rotasi")
+    },
+    {
+      p: "Jika skala peta berubah dari 1:50.000 menjadi 1:100.000, representasi objek pada peta akan tampak ...",
+      a: "Lebih kecil",
+      e: "Kunci: Lebih kecil. Semakin besar angka penyebut skala, semakin kecil ukuran objek yang tergambar.",
+      d: ["Lebih besar", "Tetap sama", "Lebih detail", "Lebih tebal"],
+      visual: createSpatialVisual("skala_peta")
+    },
+    {
+      p: "Bangun ruang yang memiliki dua alas berbentuk lingkaran kongruen dan satu selimut lengkung adalah ...",
+      a: "Tabung",
+      e: "Kunci: Tabung. Ciri utama tabung adalah dua alas lingkaran sejajar dan satu sisi lengkung.",
+      d: ["Kerucut", "Prisma segitiga", "Limas segiempat", "Bola"],
+      visual: createSpatialVisual("objek_3d")
+    },
+    {
+      p: "Sebuah balok memiliki panjang 8 cm, lebar 4 cm, dan tinggi 3 cm. Volumenya adalah ...",
+      a: "96",
+      e: "Kunci: 96. Volume balok = p x l x t = 8 x 4 x 3 = 96 cm3.",
+      d: ["64", "84", "92", "104"],
+      visual: createSpatialVisual("objek_3d")
+    },
+    {
+      p: "Jaring-jaring yang valid untuk membentuk kubus harus tersusun atas ...",
+      a: "6 persegi",
+      e: "Kunci: 6 persegi. Kubus mempunyai enam sisi yang semuanya berbentuk persegi kongruen.",
+      d: ["4 persegi", "5 persegi", "7 persegi", "8 persegi"],
+      visual: createSpatialVisual("objek_3d")
+    },
+    {
+      p: "Pada orientasi peta standar ketika arah utara berada di bagian atas, arah timur berada di ...",
+      a: "Kanan",
+      e: "Kunci: Kanan. Dalam orientasi peta standar, timur berada di sisi kanan.",
+      d: ["Kiri", "Atas", "Bawah", "Barat"],
+      visual: createSpatialVisual("skala_peta")
+    },
+    {
+      p: "Bangun ruang yang seluruh rusuknya sama panjang dan seluruh sisinya berbentuk persegi adalah ...",
+      a: "Kubus",
+      e: "Kunci: Kubus. Definisi kubus adalah bangun ruang dengan rusuk sama panjang dan sisi berbentuk persegi.",
+      d: ["Balok", "Prisma", "Limas", "Tabung"],
+      visual: createSpatialVisual("kubus_rotasi")
+    },
+    {
+      p: "Jika suatu objek dicerminkan terhadap sumbu vertikal, posisi sisi kiri objek akan berpindah ke ...",
+      a: "Sisi kanan",
+      e: "Kunci: Sisi kanan. Pencerminan terhadap sumbu vertikal menukar posisi kiri dan kanan.",
+      d: ["Sisi kiri", "Sisi atas", "Sisi bawah", "Tetap di depan"],
+      visual: createSpatialVisual("cermin_vertikal")
+    }
   ];
 
-  const distract = ["Prisma", "Kerucut", "Sisi kiri", "Lebih besar", "Atas", "Bawah", "5 persegi", "64", "Depan"];
+  const distract = ["Sisi kiri", "Sisi belakang", "Sisi atas", "Prisma", "Limas", "84", "72"];
   const out = [];
   for (let i = 0; i < count; i += 1) {
     const item = bank[i % bank.length];
-    const options = placeCorrectOption(item[1], distract, i % 5);
+    const options = placeCorrectOption(item.a, [...(item.d || []), ...distract], i % 5);
     out.push({
-      prompt: item[0],
+      prompt: item.p,
       options,
-      correctIndex: options.indexOf(item[1]),
-      explanation: item[2]
+      correctIndex: options.indexOf(item.a),
+      explanation: item.e,
+      visual: item.visual
     });
   }
   return out;
@@ -1380,53 +1627,71 @@ function generateAbstraksiRuang(count) {
 
 function generateBentuk(count) {
   const bank = [
-    [
-      "Bangun datar yang memiliki 4 sisi sama panjang dan 4 sudut siku-siku adalah ...",
-      "Persegi",
-      "Persegi memiliki empat sisi sama panjang dan sudut 90 derajat."
-    ],
-    [
-      "Bangun datar dengan tepat satu pasang sisi sejajar adalah ...",
-      "Trapesium",
-      "Trapesium memiliki satu pasang sisi sejajar."
-    ],
-    [
-      "Segitiga dengan tiga sisi sama panjang disebut ...",
-      "Segitiga sama sisi",
-      "Semua sisinya sama panjang."
-    ],
-    [
-      "Lingkaran memiliki jumlah sudut ...",
-      "0",
-      "Lingkaran tidak memiliki sudut."
-    ],
-    [
-      "Bangun yang semua titik pada sisinya berjarak sama dari pusat adalah ...",
-      "Lingkaran",
-      "Itu adalah definisi lingkaran."
-    ],
-    [
-      "Persegi panjang mempunyai ... pasang sisi sejajar",
-      "2",
-      "Persegi panjang memiliki dua pasang sisi sejajar."
-    ],
-    [
-      "Sudut lebih dari 90 derajat dan kurang dari 180 derajat disebut ...",
-      "Sudut tumpul",
-      "Rentang tersebut adalah sudut tumpul."
-    ]
+    {
+      p: "Bangun datar yang memiliki empat sisi sama panjang dan empat sudut siku-siku adalah ...",
+      a: "Persegi",
+      e: "Kunci: Persegi. Ciri utamanya adalah empat sisi sama panjang dan empat sudut 90 derajat.",
+      d: ["Persegi panjang", "Belah ketupat", "Jajar genjang", "Layang-layang"],
+      visual: createShapeVisual("persegi")
+    },
+    {
+      p: "Bangun datar yang memiliki tepat satu pasang sisi sejajar adalah ...",
+      a: "Trapesium",
+      e: "Kunci: Trapesium. Definisi trapesium adalah segiempat dengan satu pasang sisi sejajar.",
+      d: ["Jajar genjang", "Persegi panjang", "Belah ketupat", "Layang-layang"],
+      visual: createShapeVisual("trapesium")
+    },
+    {
+      p: "Segitiga yang ketiga sisinya sama panjang disebut ...",
+      a: "Segitiga sama sisi",
+      e: "Kunci: Segitiga sama sisi. Semua sisi segitiga tersebut sama panjang.",
+      d: ["Segitiga sama kaki", "Segitiga siku-siku", "Segitiga sembarang", "Segitiga tumpul"],
+      visual: createShapeVisual("segitiga_sama_sisi")
+    },
+    {
+      p: "Jumlah sudut pada lingkaran adalah ...",
+      a: "0",
+      e: "Kunci: 0. Lingkaran tidak memiliki titik sudut.",
+      d: ["1", "2", "3", "4"],
+      visual: createShapeVisual("lingkaran")
+    },
+    {
+      p: "Bangun datar yang seluruh titik pada kelilingnya berjarak sama terhadap titik pusat adalah ...",
+      a: "Lingkaran",
+      e: "Kunci: Lingkaran. Pernyataan tersebut merupakan definisi lingkaran.",
+      d: ["Elips", "Persegi", "Layang-layang", "Jajar genjang"],
+      visual: createShapeVisual("lingkaran")
+    },
+    {
+      p: "Persegi panjang memiliki ... pasang sisi sejajar.",
+      a: "2",
+      e: "Kunci: 2. Persegi panjang mempunyai dua pasang sisi sejajar.",
+      d: ["1", "3", "4", "0"],
+      visual: createShapeVisual("persegi")
+    },
+    {
+      p: "Sudut yang besarnya lebih dari 90 derajat dan kurang dari 180 derajat disebut ...",
+      a: "Sudut tumpul",
+      e: "Kunci: Sudut tumpul. Rentang sudut tersebut berada pada kategori tumpul.",
+      d: ["Sudut lancip", "Sudut siku-siku", "Sudut lurus", "Sudut refleks"],
+      visual: createShapeVisual("sudut_tumpul")
+    }
   ];
 
-  const distract = ["Segitiga", "Jajar genjang", "1", "3", "Sudut lancip", "Sudut lurus", "Belah ketupat", "Persegi panjang"];
+  const distract = [
+    "Persegi panjang", "Belah ketupat", "Jajar genjang", "Layang-layang",
+    "Segitiga sama kaki", "1", "3", "4", "Sudut lancip", "Sudut siku-siku", "Sudut lurus"
+  ];
   const out = [];
   for (let i = 0; i < count; i += 1) {
     const item = bank[i % bank.length];
-    const options = placeCorrectOption(item[1], distract, i % 5);
+    const options = placeCorrectOption(item.a, [...(item.d || []), ...distract], i % 5);
     out.push({
-      prompt: item[0],
+      prompt: item.p,
       options,
-      correctIndex: options.indexOf(item[1]),
-      explanation: item[2]
+      correctIndex: options.indexOf(item.a),
+      explanation: item.e,
+      visual: item.visual
     });
   }
   return out;
@@ -1641,7 +1906,13 @@ function generateKDKMP(count) {
   for (let i = 0; i < count; i += 1) {
     const item = kasus[i % kasus.length];
     const combinedDistractors = [...(item.d || []), ...distract];
-    out.push(createQuestion(item.p, item.a, combinedDistractors, item.e, i % 5));
+    out.push(createQuestion(
+      `Pilih keputusan manajerial yang paling tepat.\n${item.p}`,
+      item.a,
+      combinedDistractors,
+      `Kunci: ${item.a}. Langkah pikir: prioritaskan opsi yang berbasis data, terukur, dan dapat dieksekusi. ${item.e}`,
+      i % 5
+    ));
   }
   return out;
 }
@@ -1711,6 +1982,13 @@ function renderExam() {
   dom.questionMeta.textContent = `${q.sectionTitle} • Nomor ${q.sectionLocalNumber}/${range.count} • Soal ${q.globalNumber}/${state.questions.length}`;
   dom.questionTitle.textContent = `Soal ${q.globalNumber}`;
   dom.questionBody.textContent = q.prompt;
+  if (q.visual?.src) {
+    dom.questionVisual.innerHTML = `<img src="${q.visual.src}" alt="${q.visual.caption || "Ilustrasi soal"}"><p>${q.visual.caption || "Ilustrasi visual soal."}</p>`;
+    dom.questionVisual.classList.add("active");
+  } else {
+    dom.questionVisual.innerHTML = "";
+    dom.questionVisual.classList.remove("active");
+  }
   dom.flagBtn.textContent = state.flagged.has(state.currentQuestionIndex) ? "Batalkan Ragu" : "Tandai Ragu";
   dom.questionProgressBar.style.width = `${Math.round((q.globalNumber / state.questions.length) * 100)}%`;
   dom.focusModeBtn.textContent = state.ui.focusMode ? "Matikan Mode Fokus" : "Mode Fokus";
