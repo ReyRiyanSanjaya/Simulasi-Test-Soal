@@ -260,7 +260,7 @@ function createQuestion(prompt, correctAnswer, distractors, explanation, targetI
 }
 
 function createSvgDataUri(inner, width = 760, height = 220) {
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${width}' height='${height}' viewBox='0 0 ${width} ${height}'><defs><linearGradient id='bg' x1='0' x2='1' y1='0' y2='1'><stop offset='0%' stop-color='#f7fbff'/><stop offset='100%' stop-color='#e9f2ff'/></linearGradient></defs><rect width='100%' height='100%' fill='url(#bg)' rx='18' ry='18'/>${inner}</svg>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${width}' height='${height}' viewBox='0 0 ${width} ${height}'><defs><linearGradient id='bg' x1='0' x2='1' y1='0' y2='1'><stop offset='0%' stop-color='#f7fbff'/><stop offset='100%' stop-color='#e9f2ff'/></linearGradient><marker id='arrowHead' markerWidth='8' markerHeight='8' refX='7' refY='4' orient='auto'><path d='M0,0 L8,4 L0,8 Z' fill='#2c5ea8'/></marker></defs><rect width='100%' height='100%' fill='url(#bg)' rx='18' ry='18'/>${inner}</svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
@@ -272,30 +272,59 @@ function createSequenceVisual(sequence) {
   const totalW = (boxW * all.length) + (gap * (all.length - 1));
   const startX = Math.max(18, Math.floor((760 - totalW) / 2));
   const y = 64;
+  const normalized = all.map((value) => {
+    if (value === "^") return "UP";
+    if (value === ">") return "RT";
+    if (value === "v") return "DN";
+    if (value === "<") return "LT";
+    return String(value);
+  });
+  const connectors = all.map((_, idx) => {
+    if (idx >= all.length - 1) {
+      return "";
+    }
+    const x1 = startX + (idx * (boxW + gap)) + boxW;
+    const x2 = startX + ((idx + 1) * (boxW + gap));
+    const cy = y + (boxH / 2);
+    return `<line x1='${x1 + 4}' y1='${cy}' x2='${x2 - 4}' y2='${cy}' stroke='#6f97d6' stroke-width='2.5' marker-end='url(#arrowHead)'/>`;
+  }).join("");
   const boxes = all.map((value, idx) => {
     const x = startX + (idx * (boxW + gap));
     const fill = idx === all.length - 1 ? "#dbe9ff" : "#ffffff";
     const stroke = idx === all.length - 1 ? "#4a7fda" : "#9bb9e8";
-    return `<rect x='${x}' y='${y}' width='${boxW}' height='${boxH}' rx='14' fill='${fill}' stroke='${stroke}' stroke-width='2'/><text x='${x + (boxW / 2)}' y='${y + 52}' text-anchor='middle' font-family='Inter, Arial' font-size='34' font-weight='700' fill='#1f3f75'>${value}</text>`;
+    const label = normalized[idx];
+    const fontSize = label.length >= 8 ? 20 : label.length >= 5 ? 24 : 34;
+    return `<rect x='${x}' y='${y}' width='${boxW}' height='${boxH}' rx='14' fill='${fill}' stroke='${stroke}' stroke-width='2'/><text x='${x + (boxW / 2)}' y='${y + 22}' text-anchor='middle' font-family='Inter, Arial' font-size='13' font-weight='600' fill='#5a78aa'>${idx + 1}</text><text x='${x + (boxW / 2)}' y='${y + 56}' text-anchor='middle' font-family='Inter, Arial' font-size='${fontSize}' font-weight='700' fill='#1f3f75'>${label}</text>`;
   }).join("");
+  const hint = "<text x='380' y='186' text-anchor='middle' font-family='Inter, Arial' font-size='14' fill='#5474a8'>Amati perubahan antar-kotak secara berurutan.</text>";
   return {
-    src: createSvgDataUri(boxes),
-    caption: "Pola deret visual. Tentukan elemen terakhir yang benar."
+    src: createSvgDataUri(`${connectors}${boxes}${hint}`),
+    caption: "Pola deret visual dengan penanda urutan. Tentukan elemen terakhir yang konsisten."
   };
 }
 
 function createShapeVisual(kind) {
   let inner = "";
   if (kind === "persegi") {
-    inner = "<rect x='300' y='45' width='160' height='160' fill='#3f78da' stroke='#1e4c9c' stroke-width='6'/>";
+    inner = "<rect x='300' y='45' width='160' height='160' fill='#3f78da' stroke='#1e4c9c' stroke-width='6'/><line x1='300' y1='45' x2='460' y2='205' stroke='#d8e7ff' stroke-width='3'/><line x1='460' y1='45' x2='300' y2='205' stroke='#d8e7ff' stroke-width='3'/><text x='292' y='40' font-size='14' fill='#1f3f75' font-weight='700'>s</text><text x='466' y='128' font-size='14' fill='#1f3f75' font-weight='700'>s</text>";
   } else if (kind === "trapesium") {
-    inner = "<polygon points='250,190 510,190 450,60 310,60' fill='#3f78da' stroke='#1e4c9c' stroke-width='6'/>";
+    inner = "<polygon points='250,190 510,190 450,60 310,60' fill='#3f78da' stroke='#1e4c9c' stroke-width='6'/><line x1='250' y1='190' x2='510' y2='190' stroke='#d8e7ff' stroke-width='3' stroke-dasharray='7 6'/><line x1='310' y1='60' x2='450' y2='60' stroke='#d8e7ff' stroke-width='3' stroke-dasharray='7 6'/><text x='258' y='206' font-size='14' fill='#1f3f75' font-weight='700'>sejajar</text>";
   } else if (kind === "segitiga_sama_sisi") {
-    inner = "<polygon points='380,42 520,190 240,190' fill='#3f78da' stroke='#1e4c9c' stroke-width='6'/>";
+    inner = "<polygon points='380,42 520,190 240,190' fill='#3f78da' stroke='#1e4c9c' stroke-width='6'/><text x='372' y='30' font-size='14' fill='#1f3f75' font-weight='700'>A</text><text x='525' y='202' font-size='14' fill='#1f3f75' font-weight='700'>B</text><text x='226' y='202' font-size='14' fill='#1f3f75' font-weight='700'>C</text>";
   } else if (kind === "lingkaran") {
-    inner = "<circle cx='380' cy='120' r='82' fill='#3f78da' stroke='#1e4c9c' stroke-width='6'/>";
+    inner = "<circle cx='380' cy='120' r='82' fill='#3f78da' stroke='#1e4c9c' stroke-width='6'/><line x1='298' y1='120' x2='462' y2='120' stroke='#d8e7ff' stroke-width='4'/><line x1='380' y1='120' x2='450' y2='90' stroke='#d8e7ff' stroke-width='4'/><circle cx='380' cy='120' r='4' fill='#f7fbff'/><text x='386' y='118' font-size='12' fill='#f7fbff' font-weight='700'>O</text>";
   } else if (kind === "sudut_tumpul") {
-    inner = "<line x1='200' y1='170' x2='380' y2='170' stroke='#1e4c9c' stroke-width='8'/><line x1='200' y1='170' x2='330' y2='75' stroke='#1e4c9c' stroke-width='8'/><path d='M244 168 A44 44 0 0 1 264 136' fill='none' stroke='#3f78da' stroke-width='6'/>";
+    inner = "<line x1='200' y1='170' x2='380' y2='170' stroke='#1e4c9c' stroke-width='8'/><line x1='200' y1='170' x2='330' y2='75' stroke='#1e4c9c' stroke-width='8'/><path d='M244 168 A44 44 0 0 1 264 136' fill='none' stroke='#3f78da' stroke-width='6'/><text x='268' y='158' font-size='14' fill='#1f3f75' font-weight='700'>135 deg</text>";
+  } else if (kind === "jajar_genjang") {
+    inner = "<polygon points='250,170 460,170 540,70 330,70' fill='#3f78da' stroke='#1e4c9c' stroke-width='6'/><line x1='250' y1='170' x2='540' y2='70' stroke='#d8e7ff' stroke-width='3'/><line x1='330' y1='70' x2='460' y2='170' stroke='#d8e7ff' stroke-width='3'/>";
+  } else if (kind === "belah_ketupat") {
+    inner = "<polygon points='380,40 530,120 380,200 230,120' fill='#3f78da' stroke='#1e4c9c' stroke-width='6'/><line x1='380' y1='40' x2='380' y2='200' stroke='#d8e7ff' stroke-width='4'/><line x1='230' y1='120' x2='530' y2='120' stroke='#d8e7ff' stroke-width='4'/>";
+  } else if (kind === "layang_layang") {
+    inner = "<polygon points='380,35 510,118 380,205 285,118' fill='#3f78da' stroke='#1e4c9c' stroke-width='6'/><line x1='380' y1='35' x2='380' y2='205' stroke='#1e4c9c' stroke-width='4' stroke-dasharray='8 8'/><text x='388' y='118' font-size='13' fill='#1f3f75' font-weight='700'>sumbu</text>";
+  } else if (kind === "simetri_lipat") {
+    inner = "<line x1='380' y1='30' x2='380' y2='200' stroke='#2c5ea8' stroke-width='5' stroke-dasharray='8 8'/><polygon points='250,170 300,70 360,140 420,70 510,170' fill='none' stroke='#1e4c9c' stroke-width='6'/><text x='388' y='48' font-size='13' fill='#1f3f75' font-weight='700'>lipat</text>";
+  } else if (kind === "simetri_putar") {
+    inner = "<rect x='290' y='55' width='180' height='130' fill='none' stroke='#1e4c9c' stroke-width='6'/><path d='M380 40 A70 70 0 1 1 379 40' fill='none' stroke='#3f78da' stroke-width='5'/><polygon points='442,51 462,54 452,69' fill='#3f78da'/><text x='456' y='47' font-size='13' fill='#1f3f75' font-weight='700'>90 deg</text>";
   } else {
     inner = "<rect x='280' y='50' width='200' height='140' fill='#3f78da' stroke='#1e4c9c' stroke-width='6'/>";
   }
@@ -308,11 +337,17 @@ function createShapeVisual(kind) {
 function createSpatialVisual(kind) {
   let inner = "";
   if (kind === "kubus_rotasi") {
-    inner = "<polygon points='235,70 355,50 500,92 380,112' fill='#d7e7ff' stroke='#2c5ea8' stroke-width='4'/><polygon points='235,70 235,165 380,207 380,112' fill='#b5cff7' stroke='#2c5ea8' stroke-width='4'/><polygon points='380,112 500,92 500,187 380,207' fill='#8cb4ed' stroke='#2c5ea8' stroke-width='4'/><text x='292' y='118' font-size='22' fill='#1f3f75' font-weight='700' font-family='Inter, Arial'>DEPAN</text><text x='425' y='160' font-size='22' fill='#1f3f75' font-weight='700' font-family='Inter, Arial'>KANAN</text>";
+    inner = "<polygon points='235,70 355,50 500,92 380,112' fill='#d7e7ff' stroke='#2c5ea8' stroke-width='4'/><polygon points='235,70 235,165 380,207 380,112' fill='#b5cff7' stroke='#2c5ea8' stroke-width='4'/><polygon points='380,112 500,92 500,187 380,207' fill='#8cb4ed' stroke='#2c5ea8' stroke-width='4'/><text x='292' y='118' font-size='22' fill='#1f3f75' font-weight='700' font-family='Inter, Arial'>DEPAN</text><text x='425' y='160' font-size='22' fill='#1f3f75' font-weight='700' font-family='Inter, Arial'>KANAN</text><path d='M345 34 A44 44 0 0 1 435 54' fill='none' stroke='#2c5ea8' stroke-width='3.5' marker-end='url(#arrowHead)'/><text x='392' y='34' font-size='13' fill='#1f3f75' font-weight='700'>rotasi</text>";
   } else if (kind === "skala_peta") {
-    inner = "<rect x='120' y='52' width='230' height='140' rx='14' fill='#c9defa' stroke='#2c5ea8' stroke-width='4'/><rect x='430' y='74' width='155' height='95' rx='12' fill='#9fc2f4' stroke='#2c5ea8' stroke-width='4'/><text x='170' y='132' font-size='24' fill='#1f3f75' font-weight='700' font-family='Inter, Arial'>1 : 50.000</text><text x='450' y='132' font-size='22' fill='#1f3f75' font-weight='700' font-family='Inter, Arial'>1 : 100.000</text>";
+    inner = "<rect x='120' y='52' width='230' height='140' rx='14' fill='#c9defa' stroke='#2c5ea8' stroke-width='4'/><rect x='430' y='74' width='155' height='95' rx='12' fill='#9fc2f4' stroke='#2c5ea8' stroke-width='4'/><line x1='365' y1='120' x2='420' y2='120' stroke='#2c5ea8' stroke-width='3' marker-end='url(#arrowHead)'/><text x='170' y='132' font-size='24' fill='#1f3f75' font-weight='700' font-family='Inter, Arial'>1 : 50.000</text><text x='450' y='132' font-size='22' fill='#1f3f75' font-weight='700' font-family='Inter, Arial'>1 : 100.000</text><text x='350' y='110' font-size='12' fill='#1f3f75' font-weight='700'>diperkecil</text>";
   } else if (kind === "cermin_vertikal") {
-    inner = "<line x1='380' y1='30' x2='380' y2='195' stroke='#2c5ea8' stroke-width='5' stroke-dasharray='8 8'/><polygon points='190,165 275,70 315,165' fill='#83ace8' stroke='#2c5ea8' stroke-width='5'/><polygon points='570,165 485,70 445,165' fill='#b7d2f8' stroke='#2c5ea8' stroke-width='5'/>";
+    inner = "<line x1='380' y1='30' x2='380' y2='195' stroke='#2c5ea8' stroke-width='5' stroke-dasharray='8 8'/><polygon points='190,165 275,70 315,165' fill='#83ace8' stroke='#2c5ea8' stroke-width='5'/><polygon points='570,165 485,70 445,165' fill='#b7d2f8' stroke='#2c5ea8' stroke-width='5'/><text x='387' y='48' font-size='12' fill='#1f3f75' font-weight='700'>sumbu cermin</text>";
+  } else if (kind === "arah_kompas") {
+    inner = "<circle cx='380' cy='110' r='74' fill='none' stroke='#2c5ea8' stroke-width='5'/><line x1='380' y1='36' x2='380' y2='184' stroke='#2c5ea8' stroke-width='4'/><line x1='306' y1='110' x2='454' y2='110' stroke='#2c5ea8' stroke-width='4'/><line x1='380' y1='110' x2='430' y2='72' stroke='#2c5ea8' stroke-width='3' marker-end='url(#arrowHead)'/><text x='372' y='28' font-size='20' fill='#1f3f75' font-weight='700'>U</text><text x='372' y='206' font-size='20' fill='#1f3f75' font-weight='700'>S</text><text x='278' y='116' font-size='20' fill='#1f3f75' font-weight='700'>B</text><text x='468' y='116' font-size='20' fill='#1f3f75' font-weight='700'>T</text><text x='434' y='68' font-size='12' fill='#1f3f75' font-weight='700'>arah</text>";
+  } else if (kind === "rotasi_panah") {
+    inner = "<rect x='180' y='52' width='130' height='120' rx='10' fill='#d7e7ff' stroke='#2c5ea8' stroke-width='4'/><rect x='330' y='52' width='130' height='120' rx='10' fill='#bcd5f7' stroke='#2c5ea8' stroke-width='4'/><rect x='480' y='52' width='100' height='120' rx='10' fill='#95bdf0' stroke='#2c5ea8' stroke-width='4'/><line x1='312' y1='112' x2='326' y2='112' stroke='#2c5ea8' stroke-width='3' marker-end='url(#arrowHead)'/><line x1='462' y1='112' x2='476' y2='112' stroke='#2c5ea8' stroke-width='3' marker-end='url(#arrowHead)'/><polygon points='227,112 260,84 260,102 286,102 286,122 260,122 260,140' fill='#1f3f75'/><polygon points='382,80 410,112 392,112 392,138 372,138 372,112 354,112' fill='#1f3f75'/><text x='518' y='118' font-size='38' fill='#1f3f75' font-weight='700' font-family='Inter, Arial'>?</text><text x='344' y='186' font-size='12' fill='#1f3f75' font-weight='700'>rotasi 90 deg</text>";
+  } else if (kind === "jaring_kubus") {
+    inner = "<rect x='230' y='88' width='70' height='70' fill='#d7e7ff' stroke='#2c5ea8' stroke-width='4'/><rect x='300' y='88' width='70' height='70' fill='#b5cff7' stroke='#2c5ea8' stroke-width='4'/><rect x='370' y='88' width='70' height='70' fill='#8cb4ed' stroke='#2c5ea8' stroke-width='4'/><rect x='440' y='88' width='70' height='70' fill='#b5cff7' stroke='#2c5ea8' stroke-width='4'/><rect x='300' y='18' width='70' height='70' fill='#d7e7ff' stroke='#2c5ea8' stroke-width='4'/><rect x='300' y='158' width='70' height='70' fill='#d7e7ff' stroke='#2c5ea8' stroke-width='4'/><text x='334' y='132' text-anchor='middle' font-size='14' fill='#1f3f75' font-weight='700'>T</text><text x='264' y='132' text-anchor='middle' font-size='14' fill='#1f3f75' font-weight='700'>L</text><text x='404' y='132' text-anchor='middle' font-size='14' fill='#1f3f75' font-weight='700'>R</text>";
   } else {
     inner = "<rect x='245' y='58' width='130' height='130' fill='#d6e6ff' stroke='#2c5ea8' stroke-width='5'/><rect x='390' y='58' width='130' height='130' fill='#93b8ef' stroke='#2c5ea8' stroke-width='5'/><text x='300' y='129' text-anchor='middle' font-size='20' fill='#1f3f75' font-weight='700' font-family='Inter, Arial'>A</text><text x='455' y='129' text-anchor='middle' font-size='20' fill='#1f3f75' font-weight='700' font-family='Inter, Arial'>B</text>";
   }
@@ -1468,7 +1503,7 @@ function generatePengetahuanUmum(count) {
 function generatePola(count) {
   const out = [];
   for (let i = 0; i < count; i += 1) {
-    const mode = i % 4;
+    const mode = i % 6;
     if (mode === 0) {
       const start = 2 + (i % 5);
       const diff = 3 + (i % 4);
@@ -1533,7 +1568,7 @@ function generatePola(count) {
         explanation: `Kunci: ${benar}. Selisih antarsuku membentuk pola naik +2: +${inc1}, +${inc2}, +${inc3}, sehingga berikutnya +${nextInc}.`,
         visual: createSequenceVisual(seq)
       });
-    } else {
+    } else if (mode === 3) {
       const seq = ["A", "C", "F", "J", "O"];
       const benar = "U";
       const options = placeCorrectOption(benar, ["T", "V", "W", "S", "R"], i % 5);
@@ -1542,6 +1577,32 @@ function generatePola(count) {
         options,
         correctIndex: options.indexOf(benar),
         explanation: "Kunci: U. Pola lompatan alfabet berturut-turut adalah +2, +3, +4, +5, sehingga lompatan berikutnya +6 menghasilkan U.",
+        visual: createSequenceVisual(seq)
+      });
+    } else if (mode === 4) {
+      const seq = ["^", ">", "v", "<", "^"];
+      const benar = ">";
+      const options = placeCorrectOption(benar, ["^", "v", "<", "x"], i % 5);
+      out.push({
+        prompt: `Perhatikan pola gambar berikut (arah panah): ${seq.join(", ")}. Simbol berikutnya adalah ...`,
+        options,
+        correctIndex: options.indexOf(benar),
+        explanation: "Kunci: >. Arah panah berputar 90 derajat searah jarum jam secara berulang.",
+        visual: createSequenceVisual(seq)
+      });
+    } else {
+      const seq = ["[]", "()()", "[][][]", "()()()()", "[][][][][]"];
+      const benar = "()()()()()()";
+      const options = placeCorrectOption(
+        benar,
+        ["[][][][][][]", "()()()()()", "[][][][][]", "()()()()()()()"],
+        i % 5
+      );
+      out.push({
+        prompt: `Perhatikan pola gambar berulang berikut: ${seq.join(", ")}. Elemen berikutnya yang tepat adalah ...`,
+        options,
+        correctIndex: options.indexOf(benar),
+        explanation: "Kunci: ()()()()()(). Pola berganti jenis simbol secara selang-seling sambil jumlah pasangan bertambah satu setiap langkah.",
         visual: createSequenceVisual(seq)
       });
     }
@@ -1566,39 +1627,39 @@ function generateAbstraksiRuang(count) {
       visual: createSpatialVisual("skala_peta")
     },
     {
-      p: "Bangun ruang yang memiliki dua alas berbentuk lingkaran kongruen dan satu selimut lengkung adalah ...",
-      a: "Tabung",
-      e: "Kunci: Tabung. Ciri utama tabung adalah dua alas lingkaran sejajar dan satu sisi lengkung.",
-      d: ["Kerucut", "Prisma segitiga", "Limas segiempat", "Bola"],
-      visual: createSpatialVisual("objek_3d")
+      p: "Sebuah panah mula-mula mengarah ke kanan. Jika diputar 90 derajat berlawanan arah jarum jam, arah panah menjadi ...",
+      a: "Atas",
+      e: "Kunci: Atas. Rotasi 90 derajat berlawanan arah jarum jam dari kanan menghasilkan arah atas.",
+      d: ["Bawah", "Kanan", "Kiri", "Tenggara"],
+      visual: createSpatialVisual("rotasi_panah")
     },
     {
-      p: "Sebuah balok memiliki panjang 8 cm, lebar 4 cm, dan tinggi 3 cm. Volumenya adalah ...",
-      a: "96",
-      e: "Kunci: 96. Volume balok = p x l x t = 8 x 4 x 3 = 96 cm3.",
-      d: ["64", "84", "92", "104"],
-      visual: createSpatialVisual("objek_3d")
+      p: "Pada peta berskala 1:50.000, jarak dua titik adalah 3 cm. Jarak sebenarnya kedua titik tersebut adalah ...",
+      a: "1,5 km",
+      e: "Kunci: 1,5 km. Jarak sebenarnya = 3 x 50.000 cm = 150.000 cm = 1,5 km.",
+      d: ["0,5 km", "1,2 km", "2,0 km", "15 km"],
+      visual: createSpatialVisual("skala_peta")
     },
     {
-      p: "Jaring-jaring yang valid untuk membentuk kubus harus tersusun atas ...",
-      a: "6 persegi",
-      e: "Kunci: 6 persegi. Kubus mempunyai enam sisi yang semuanya berbentuk persegi kongruen.",
-      d: ["4 persegi", "5 persegi", "7 persegi", "8 persegi"],
-      visual: createSpatialVisual("objek_3d")
+      p: "Jika seseorang bergerak 40 meter ke timur lalu 30 meter ke utara, jarak lurus dari titik awal ke titik akhir adalah ...",
+      a: "50 meter",
+      e: "Kunci: 50 meter. Gunakan Teorema Pythagoras: akar(40^2 + 30^2) = akar(2500) = 50.",
+      d: ["45 meter", "60 meter", "70 meter", "80 meter"],
+      visual: createSpatialVisual("arah_kompas")
     },
     {
       p: "Pada orientasi peta standar ketika arah utara berada di bagian atas, arah timur berada di ...",
       a: "Kanan",
       e: "Kunci: Kanan. Dalam orientasi peta standar, timur berada di sisi kanan.",
       d: ["Kiri", "Atas", "Bawah", "Barat"],
-      visual: createSpatialVisual("skala_peta")
+      visual: createSpatialVisual("arah_kompas")
     },
     {
-      p: "Bangun ruang yang seluruh rusuknya sama panjang dan seluruh sisinya berbentuk persegi adalah ...",
-      a: "Kubus",
-      e: "Kunci: Kubus. Definisi kubus adalah bangun ruang dengan rusuk sama panjang dan sisi berbentuk persegi.",
-      d: ["Balok", "Prisma", "Limas", "Tabung"],
-      visual: createSpatialVisual("kubus_rotasi")
+      p: "Pada jaring-jaring kubus model salib, persegi yang berada di posisi tengah akan bersinggungan langsung dengan ... sisi saat dilipat.",
+      a: "4 sisi",
+      e: "Kunci: 4 sisi. Pada jaring-jaring kubus model salib, sisi tengah menjadi acuan yang berbatasan dengan empat sisi lain.",
+      d: ["2 sisi", "3 sisi", "5 sisi", "6 sisi"],
+      visual: createSpatialVisual("jaring_kubus")
     },
     {
       p: "Jika suatu objek dicerminkan terhadap sumbu vertikal, posisi sisi kiri objek akan berpindah ke ...",
@@ -1635,46 +1696,60 @@ function generateBentuk(count) {
       visual: createShapeVisual("persegi")
     },
     {
+      p: "Bangun datar yang memiliki dua pasang sisi sejajar, sisi berhadapan sama panjang, tetapi tidak wajib memiliki sudut siku-siku adalah ...",
+      a: "Jajar genjang",
+      e: "Kunci: Jajar genjang. Ciri ini membedakan jajar genjang dari persegi panjang yang mensyaratkan sudut siku-siku.",
+      d: ["Trapesium", "Belah ketupat", "Layang-layang", "Persegi panjang"],
+      visual: createShapeVisual("jajar_genjang")
+    },
+    {
+      p: "Pada belah ketupat, sifat diagonal yang benar adalah ...",
+      a: "Kedua diagonal saling tegak lurus",
+      e: "Kunci: Kedua diagonal saling tegak lurus. Pada belah ketupat, diagonal juga saling membagi dua.",
+      d: ["Kedua diagonal sama panjang", "Diagonal tidak saling berpotongan", "Hanya satu diagonal membagi dua", "Diagonal sejajar satu sama lain"],
+      visual: createShapeVisual("belah_ketupat")
+    },
+    {
+      p: "Bangun layang-layang memiliki jumlah sumbu simetri lipat sebanyak ...",
+      a: "1",
+      e: "Kunci: 1. Layang-layang memiliki satu sumbu simetri yang membagi bangun menjadi dua bagian kongruen.",
+      d: ["0", "2", "3", "4"],
+      visual: createShapeVisual("layang_layang")
+    },
+    {
+      p: "Jumlah simetri putar tingkat penuh pada persegi adalah ...",
+      a: "4",
+      e: "Kunci: 4. Persegi menempati bingkai semula setiap diputar 90 derajat, 180 derajat, 270 derajat, dan 360 derajat.",
+      d: ["1", "2", "3", "8"],
+      visual: createShapeVisual("simetri_putar")
+    },
+    {
       p: "Bangun datar yang memiliki tepat satu pasang sisi sejajar adalah ...",
       a: "Trapesium",
-      e: "Kunci: Trapesium. Definisi trapesium adalah segiempat dengan satu pasang sisi sejajar.",
+      e: "Kunci: Trapesium. Definisi trapesium adalah segiempat dengan tepat satu pasang sisi sejajar.",
       d: ["Jajar genjang", "Persegi panjang", "Belah ketupat", "Layang-layang"],
       visual: createShapeVisual("trapesium")
     },
     {
-      p: "Segitiga yang ketiga sisinya sama panjang disebut ...",
-      a: "Segitiga sama sisi",
-      e: "Kunci: Segitiga sama sisi. Semua sisi segitiga tersebut sama panjang.",
-      d: ["Segitiga sama kaki", "Segitiga siku-siku", "Segitiga sembarang", "Segitiga tumpul"],
-      visual: createShapeVisual("segitiga_sama_sisi")
+      p: "Jika sebuah sudut besarnya 135 derajat, sudut tersebut termasuk kategori ...",
+      a: "Sudut tumpul",
+      e: "Kunci: Sudut tumpul. Sudut tumpul berada pada rentang lebih dari 90 derajat dan kurang dari 180 derajat.",
+      d: ["Sudut lancip", "Sudut siku-siku", "Sudut lurus", "Sudut refleks"],
+      visual: createShapeVisual("sudut_tumpul")
     },
     {
-      p: "Jumlah sudut pada lingkaran adalah ...",
-      a: "0",
-      e: "Kunci: 0. Lingkaran tidak memiliki titik sudut.",
-      d: ["1", "2", "3", "4"],
-      visual: createShapeVisual("lingkaran")
-    },
-    {
-      p: "Bangun datar yang seluruh titik pada kelilingnya berjarak sama terhadap titik pusat adalah ...",
+      p: "Bangun datar yang semua titik pada kelilingnya berjarak sama terhadap satu titik pusat adalah ...",
       a: "Lingkaran",
-      e: "Kunci: Lingkaran. Pernyataan tersebut merupakan definisi lingkaran.",
+      e: "Kunci: Lingkaran. Ini adalah definisi dasar lingkaran.",
       d: ["Elips", "Persegi", "Layang-layang", "Jajar genjang"],
       visual: createShapeVisual("lingkaran")
     },
     {
-      p: "Persegi panjang memiliki ... pasang sisi sejajar.",
-      a: "2",
-      e: "Kunci: 2. Persegi panjang mempunyai dua pasang sisi sejajar.",
-      d: ["1", "3", "4", "0"],
-      visual: createShapeVisual("persegi")
-    },
-    {
-      p: "Sudut yang besarnya lebih dari 90 derajat dan kurang dari 180 derajat disebut ...",
-      a: "Sudut tumpul",
-      e: "Kunci: Sudut tumpul. Rentang sudut tersebut berada pada kategori tumpul.",
-      d: ["Sudut lancip", "Sudut siku-siku", "Sudut lurus", "Sudut refleks"],
-      visual: createShapeVisual("sudut_tumpul")
+      p: "Jumlah sumbu simetri lipat pada persegi adalah ...",
+      a: "4",
+      e: "Kunci: 4. Persegi memiliki dua sumbu melalui diagonal dan dua sumbu melalui titik tengah sisi berhadapan.",
+      d: ["1", "2", "3", "8"],
+      visual: createShapeVisual("simetri_lipat")
     }
   ];
 
