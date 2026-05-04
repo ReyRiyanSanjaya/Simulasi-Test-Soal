@@ -1,0 +1,30 @@
+{
+  "blueprint": [
+    { "id": "bahasa", "title": "TPK Sub 1 - Bahasa", "durationMin": 7 },
+    { "id": "kdkmp", "title": "Tes Manajemen Bidang KDKMP/KNMP", "durationMin": 20 }
+  ],
+  "sections": {
+    "bahasa": [
+      {
+        "prompt": "Pilih sinonim dari kata 'akurat'.",
+        "options": ["Tepat", "Kabur", "Ragu", "Lambat", "Boros"],
+        "correctIndex": 0,
+        "explanation": "Akurat bermakna tepat."
+      }
+    ],
+    "kdkmp": [
+      {
+        "prompt": "Prinsip utama koperasi dalam pengambilan keputusan adalah ...",
+        "options": [
+          "Keputusan sepihak",
+          "Musyawarah anggota",
+          "Rahasia pengurus",
+          "Instruksi pihak luar",
+          "Voting tanpa aturan"
+        ],
+        "correctIndex": 1,
+        "explanation": "Koperasi menekankan asas kekeluargaan dan musyawarah anggota."
+      }
+    ]
+  }
+}

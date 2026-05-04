@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulasi CAT KDKMP KOPDES</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div>
+        <h1>Simulasi CAT KDKMP KOPDES</h1>
+        <p>Format tes mengikuti skema Seleksi Kompetensi KDKMP (TPK + KDKMP)</p>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggleBtn" class="btn-secondary" type="button">Dark Mode</button>
+        <button id="corporateThemeBtn" class="btn-secondary" type="button">Corporate: OFF</button>
+        <button id="soundToggleBtn" class="btn-secondary" type="button">Suara: ON</button>
+        <button id="openStrategyBtn" class="btn-secondary">Strategi Cepat</button>
+        <div class="badge">248 Soal • 62 Menit</div>
+      </div>
+    </header>
+
+    <main>
+      <section id="startScreen" class="panel active">
+        <h2>Persiapan Peserta</h2>
+        <p>Masukkan data peserta untuk memulai simulasi. Sistem akan menampilkan soal bertahap sesuai subtes dan durasi resmi.</p>
+        <div class="form-grid">
+          <label>
+            Nama Peserta
+            <input id="participantName" type="text" placeholder="Contoh: Budi Santoso" />
+          </label>
+          <label>
+            Nomor Peserta
+            <input id="participantId" type="text" placeholder="Contoh: KDKMP-2026-001" />
+          </label>
+        </div>
+        <div class="card info">
+          <h3>Rincian Ujian</h3>
+          <ul>
+            <li>TPK Sub 1 Bahasa: 50 soal (7 menit)</li>
+            <li>TPK Sub 2 Hitungan: 31 soal (7 menit)</li>
+            <li>TPK Sub 3 Pengetahuan Umum: 40 soal (7 menit)</li>
+            <li>TPK Sub 4 Pola Gambar: 55 soal (7 menit)</li>
+            <li>TPK Sub 5 Abstraksi Ruang: 27 soal (7 menit)</li>
+            <li>TPK Sub 6 Bentuk: 25 soal (7 menit)</li>
+            <li>KDKMP/KNMP: 20 soal (20 menit)</li>
+          </ul>
+        </div>
+        <div class="card settings">
+          <h3>Pengaturan Simulasi</h3>
+          <div class="setting-line">
+            <label class="inline-option">
+              <input id="shuffleQuestions" type="checkbox" />
+              Acak urutan soal di tiap subtes
+            </label>
+          </div>
+          <div class="setting-line">
+            <label class="inline-option">
+              <input id="shuffleOptions" type="checkbox" checked />
+              Acak urutan pilihan jawaban
+            </label>
+          </div>
+          <div class="setting-line">
+            <button id="importBankBtn" type="button" class="btn-secondary">Import Bank Soal JSON</button>
+            <input id="bankFileInput" type="file" accept=".json,application/json" hidden />
+            <small id="bankInfo" class="muted">Menggunakan bank soal bawaan sistem.</small>
+            <small class="muted">Contoh format: file <code>bank-soal-template.json</code>.</small>
+          </div>
+        </div>
+        <div class="card tips-card">
+          <h3>Tips & Trik Cara Pintas</h3>
+          <p class="muted">Gunakan strategi ini sebagai baseline sebelum masuk mode tutor adaptif.</p>
+          <ul>
+            <li>Kerjakan soal mudah dulu, tandai soal ragu untuk putaran kedua.</li>
+            <li>Bahasa: cari kata inti kalimat, eliminasi 2 opsi paling jauh maknanya.</li>
+            <li>Hitungan: prioritaskan estimasi cepat dan cek logika hasil.</li>
+            <li>KDKMP: pilih opsi paling sistematis, berbasis data, dan sesuai tata kelola.</li>
+            <li>Jangan habiskan waktu terlalu lama di satu nomor.</li>
+          </ul>
+          <div class="tip-tags">
+            <span>Eliminasi 2 Opsi</span>
+            <span>Manajemen Waktu</span>
+            <span>Cek Logika Hasil</span>
+            <span>Data-SOP-Evaluasi</span>
+          </div>
+        </div>
+        <button id="startBtn" class="btn-primary">Mulai Simulasi</button>
+      </section>
+
+      <section id="examScreen" class="panel">
+        <div class="exam-topbar">
+          <div class="top-item">
+            <span>Peserta</span>
+            <strong id="topParticipant">-</strong>
+          </div>
+          <div class="top-item">
+            <span>Subtes Aktif</span>
+            <strong id="topSection">-</strong>
+          </div>
+          <div class="top-item">
+            <span>Progres Ujian</span>
+            <strong id="topProgress">0 / 0</strong>
+          </div>
+          <div class="top-item">
+            <span>Status</span>
+            <strong id="topStatus">Sedang Berjalan</strong>
+          </div>
+        </div>
+        <div class="exam-layout">
+          <aside class="left-panel">
+            <div class="timer-card">
+              <h3>Waktu Total</h3>
+              <p id="totalTimer" class="timer">62:00</p>
+              <h4 id="segmentTitle">-</h4>
+              <p id="segmentTimer" class="subtimer">07:00</p>
+            </div>
+            <div class="progress-card">
+              <p>Terjawab: <strong id="answeredCount">0</strong> / <span id="segmentCount">0</span></p>
+              <p>Ragu-ragu: <strong id="flaggedCount">0</strong></p>
+              <p>Nomor aktif: <strong id="activeNumber">-</strong></p>
+            </div>
+            <div class="legend">
+              <span><i class="dot answered"></i> Terjawab</span>
+              <span><i class="dot unanswered"></i> Belum</span>
+              <span><i class="dot flagged"></i> Ragu</span>
+              <span><i class="dot current"></i> Aktif</span>
+            </div>
+            <div class="tip-control">
+              <button id="prevTipBtn" class="btn-secondary" type="button">Tip Sebelumnya</button>
+              <span id="tipIndicator">Tip 1/3</span>
+              <button id="nextTipPanelBtn" class="btn-secondary" type="button">Tip Berikutnya</button>
+            </div>
+            <div id="quickTipsCard" class="quick-tips"></div>
+            <div class="learning-dashboard">
+              <h3>Progress Belajar Real-time</h3>
+              <p>Akurasi Live: <strong id="liveAccuracy">0%</strong></p>
+              <p>Streak Benar: <strong id="liveCorrectStreak">0</strong> • Streak Salah: <strong id="liveWrongStreak">0</strong></p>
+              <p>Best Streak: <strong id="liveBestStreak">0</strong></p>
+              <div id="liveTrapList" class="live-trap-list"></div>
+            </div>
+          </aside>
+
+          <section class="question-panel">
+            <div class="question-head">
+              <div>
+                <p id="questionMeta" class="meta">Subtes - Nomor</p>
+                <h2 id="questionTitle">Soal</h2>
+              </div>
+              <div class="head-actions">
+                <button id="fullscreenBtn" class="btn-secondary">Layar Penuh</button>
+                <button id="flagBtn" class="btn-secondary">Tandai Ragu</button>
+              </div>
+            </div>
+            <div class="question-progress">
+              <div id="questionProgressBar" class="question-progress-bar"></div>
+            </div>
+            <div id="questionBody" class="question-body"></div>
+            <div id="instantStrategy" class="instant-strategy"></div>
+            <div id="optionsContainer" class="options"></div>
+            <div id="learningCoach" class="learning-coach"></div>
+            <div class="micro-actions">
+              <button id="showTrapGuideBtn" class="btn-secondary" type="button">Lihat Panduan Jebakan</button>
+              <button id="focusModeBtn" class="btn-secondary" type="button">Mode Fokus</button>
+            </div>
+            <div id="trapGuideBox" class="shortcut"></div>
+            <div class="nav-buttons">
+              <button id="prevBtn" class="btn-secondary">Sebelumnya</button>
+              <button id="nextBtn" class="btn-secondary">Berikutnya</button>
+              <button id="finishBtn" class="btn-danger">Selesai Ujian</button>
+            </div>
+          </section>
+
+          <aside class="right-panel">
+            <h3 id="segmentNavTitle">Navigasi Subtes</h3>
+            <div id="segmentPills" class="segment-pills"></div>
+            <div id="numberGrid" class="number-grid"></div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="resultScreen" class="panel">
+        <h2>Hasil Simulasi</h2>
+        <div class="result-grid">
+          <div class="card score">
+            <h3>Skor Akhir</h3>
+            <p id="finalScore" class="score-value">0</p>
+            <p id="finalSummary">Benar 0 | Salah 0 | Kosong 0</p>
+          </div>
+          <div class="card">
+            <h3>Identitas Peserta</h3>
+            <p id="resultName">-</p>
+            <p id="resultId">-</p>
+            <p id="resultDate">-</p>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Rekap Per Subtes</h3>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Subtes</th>
+                  <th>Jumlah Soal</th>
+                  <th>Benar</th>
+                  <th>Salah</th>
+                  <th>Kosong</th>
+                  <th>Nilai (%)</th>
+                </tr>
+              </thead>
+              <tbody id="sectionResultBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Analisis Jebakan Dominan</h3>
+          <ul id="weakTrapList" class="analysis-list"></ul>
+        </div>
+        <div class="action-row">
+          <button id="startTutorBtn" class="btn-primary">Mulai Tutor Adaptif</button>
+          <button id="showReviewBtn" class="btn-primary">Lihat Pembahasan</button>
+          <button id="restartBtn" class="btn-secondary">Ulangi Simulasi</button>
+        </div>
+      </section>
+
+      <section id="tutorScreen" class="panel">
+        <div class="review-header">
+          <h2>Mode Tutor Adaptif</h2>
+          <button id="backTutorToResultBtn" class="btn-secondary">Kembali ke Hasil</button>
+        </div>
+        <div class="card">
+          <p id="tutorMeta" class="meta">-</p>
+          <h3 id="tutorQuestionTitle">Soal Latihan</h3>
+          <p id="tutorQuestionBody"></p>
+          <div id="tutorOptions" class="options"></div>
+          <div id="tutorFeedback" class="shortcut"></div>
+          <div class="action-row">
+            <button id="tutorNextBtn" class="btn-primary">Soal Berikutnya</button>
+            <button id="tutorFinishBtn" class="btn-secondary">Akhiri Tutor</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Fokus Latihan</h3>
+          <p id="tutorFocusInfo" class="muted">-</p>
+        </div>
+      </section>
+
+      <section id="reviewScreen" class="panel">
+        <div class="review-header">
+          <h2>Pembahasan Lengkap</h2>
+          <button id="backToResultBtn" class="btn-secondary">Kembali ke Hasil</button>
+        </div>
+        <div id="reviewList" class="review-list"></div>
+      </section>
+    </main>
+  </div>
+  <div id="strategyModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="review-header">
+        <h3>Strategi Profesional CAT KDKMP</h3>
+        <button id="closeStrategyBtn" class="btn-secondary" type="button">Tutup</button>
+      </div>
+      <ul class="analysis-list">
+        <li><strong>Aturan 20 detik:</strong> jika buntu >20 detik, tandai dan lanjut.</li>
+        <li><strong>Eliminasi agresif:</strong> buang 2 opsi lemah, lalu pilih dari 3 opsi terbaik.</li>
+        <li><strong>Hitungan cepat:</strong> estimasi hasil dulu sebelum hitung detail.</li>
+        <li><strong>KDKMP:</strong> prioritaskan opsi berbasis data, SOP, indikator, evaluasi.</li>
+        <li><strong>Siklus final:</strong> 10-15% waktu akhir untuk revisi soal ragu.</li>
+      </ul>
+    </div>
+  </div>
+  <div id="remedialModal" class="modal-overlay">
+    <div class="modal-card remedial-card">
+      <div class="review-header">
+        <h3 id="remedialTitle">Mini Remedial</h3>
+        <button id="closeRemedialBtn" class="btn-secondary" type="button">Tutup</button>
+      </div>
+      <p id="remedialPrompt" class="muted"></p>
+      <div id="remedialOptions" class="options"></div>
+      <div id="remedialFeedback" class="shortcut"></div>
+      <div class="action-row">
+        <button id="skipRemedialBtn" class="btn-secondary" type="button">Lewati Remedial</button>
+      </div>
+    </div>
+  </div>
+  <script src="./app.js"></script>
+</body>
+</html>
