@@ -1,4 +1,4 @@
-const TEST_BLUEPRINT = [
+const KDKMP_BLUEPRINT = [
   { id: "bahasa", title: "TPK Sub 1 - Bahasa", count: 50, durationMin: 7 },
   { id: "hitungan", title: "TPK Sub 2 - Hitungan", count: 31, durationMin: 7 },
   { id: "umum", title: "TPK Sub 3 - Pengetahuan Umum", count: 40, durationMin: 7 },
@@ -9,8 +9,51 @@ const TEST_BLUEPRINT = [
 ];
 
 const ALPHABET = ["A", "B", "C", "D", "E"];
+const LOCAL_TOP_SCORE_KEY = "simulasi_ujian_top_scores_v1";
+
+const EXAM_PROFILES = {
+  cpns: {
+    label: "Simulasi Ujian CPNS",
+    headline: "Simulasi Ujian Nusantara - CPNS",
+    subtitle: "Tryout CPNS dengan format TWK, TIU, dan TKP untuk latihan terukur.",
+    blueprint: [
+      { id: "twk", title: "TWK - Wawasan Kebangsaan", count: 40, durationMin: 35 },
+      { id: "tiu", title: "TIU - Intelegensi Umum", count: 35, durationMin: 30 },
+      { id: "tkp", title: "TKP - Karakteristik Pribadi", count: 45, durationMin: 40 }
+    ]
+  },
+  bumn: {
+    label: "Simulasi Ujian BUMN",
+    headline: "Simulasi Ujian Nusantara - BUMN",
+    subtitle: "Latihan tes BUMN meliputi core values, numerik, verbal, dan manajerial.",
+    blueprint: [
+      { id: "akhlak", title: "Core Values AKHLAK", count: 25, durationMin: 20 },
+      { id: "numerik", title: "Numerik & Logika", count: 30, durationMin: 25 },
+      { id: "verbal", title: "Verbal & Bahasa", count: 30, durationMin: 25 },
+      { id: "manajerial", title: "Situasional Manajerial", count: 25, durationMin: 20 }
+    ]
+  },
+  kdkmp: {
+    label: "Simulasi Ujian KDKMP",
+    headline: "Simulasi Ujian Nusantara - KDKMP",
+    subtitle: "Format tes mengikuti skema seleksi KDKMP (TPK + KDKMP).",
+    blueprint: KDKMP_BLUEPRINT
+  },
+  campuran: {
+    label: "Simulasi Campuran (Lainnya)",
+    headline: "Simulasi Ujian Nusantara - Campuran",
+    subtitle: "Paket latihan campuran lintas topik untuk memperkuat adaptasi soal.",
+    blueprint: [
+      { id: "bahasa", title: "Verbal & Bahasa", count: 25, durationMin: 15 },
+      { id: "hitungan", title: "Numerik Dasar", count: 25, durationMin: 15 },
+      { id: "umum", title: "Pengetahuan Umum", count: 25, durationMin: 15 },
+      { id: "manajerial", title: "Manajerial Situasional", count: 25, durationMin: 15 }
+    ]
+  }
+};
 
 const state = {
+  examType: "kdkmp",
   participant: { name: "", id: "" },
   questions: [],
   ranges: {},
@@ -40,7 +83,9 @@ const state = {
     wrongStreak: 0,
     correctStreak: 0,
     bestCorrectStreak: 0,
-    remedialActive: false
+    remedialActive: false,
+    questionStartTime: 0,
+    smartTipShown: false
   },
   tutor: {
     active: false,
@@ -49,6 +94,12 @@ const state = {
     cursor: 0,
     answers: [],
     correct: 0
+  },
+  audio: {
+    ambientPlaying: false,
+    ambientOsc: null,
+    speechSynthesis: window.speechSynthesis,
+    utterance: null
   }
 };
 
@@ -70,6 +121,10 @@ const dom = {
   resultScreen: document.getElementById("resultScreen"),
   tutorScreen: document.getElementById("tutorScreen"),
   reviewScreen: document.getElementById("reviewScreen"),
+  appTitle: document.getElementById("appTitle"),
+  appSubtitle: document.getElementById("appSubtitle"),
+  examType: document.getElementById("examType"),
+  examDetailList: document.getElementById("examDetailList"),
   participantName: document.getElementById("participantName"),
   participantId: document.getElementById("participantId"),
   shuffleQuestions: document.getElementById("shuffleQuestions"),
@@ -109,11 +164,15 @@ const dom = {
   resultId: document.getElementById("resultId"),
   resultDate: document.getElementById("resultDate"),
   sectionResultBody: document.getElementById("sectionResultBody"),
-  showReviewBtn: document.getElementById("showReviewBtn"),
-  restartBtn: document.getElementById("restartBtn"),
-  backToResultBtn: document.getElementById("backToResultBtn"),
-  backTutorToResultBtn: document.getElementById("backTutorToResultBtn"),
-  tutorMeta: document.getElementById("tutorMeta"),
+    showReviewBtn: document.getElementById("showReviewBtn"),
+    restartBtn: document.getElementById("restartBtn"),
+    backToResultBtn: document.getElementById("backToResultBtn"),
+    backTutorToResultBtn: document.getElementById("backTutorToResultBtn"),
+    // Comparison addition
+    yourScoreVal: document.getElementById("yourScoreVal"),
+    avgTopScoreVal: document.getElementById("avgTopScoreVal"),
+    comparisonNote: document.getElementById("comparisonNote"),
+    tutorMeta: document.getElementById("tutorMeta"),
   tutorQuestionTitle: document.getElementById("tutorQuestionTitle"),
   tutorQuestionBody: document.getElementById("tutorQuestionBody"),
   tutorOptions: document.getElementById("tutorOptions"),
@@ -153,8 +212,79 @@ const dom = {
   liveCorrectStreak: document.getElementById("liveCorrectStreak"),
   liveWrongStreak: document.getElementById("liveWrongStreak"),
   liveBestStreak: document.getElementById("liveBestStreak"),
-  liveTrapList: document.getElementById("liveTrapList")
-};
+  liveTrapList: document.getElementById("liveTrapList"),
+  leaderboardBody: document.getElementById("leaderboardBody"),
+  clearLeaderboardBtn: document.getElementById("clearLeaderboardBtn"),
+  // New elements
+  examCards: document.querySelectorAll(".exam-card"),
+  registrationForm: document.getElementById("registrationForm"),
+  backToCategories: document.getElementById("backToCategories"),
+   selectedExamTitle: document.getElementById("selectedExamTitle"),
+   enableFocusModeInit: document.getElementById("enableFocusModeInit"),
+   examCategoryGrid: document.querySelector(".exam-category-grid"),
+   // Analytics and Certificate
+   passingPrediction: document.getElementById("passingPrediction"),
+   avgSpeed: document.getElementById("avgSpeed"),
+   recommendationList: document.getElementById("recommendationList"),
+   generateCertificateBtn: document.getElementById("generateCertificateBtn"),
+   certificateModal: document.getElementById("certificateModal"),
+   closeCertificateBtn: document.getElementById("closeCertificateBtn"),
+   certName: document.getElementById("certName"),
+   certExamType: document.getElementById("certExamType"),
+   certScore: document.getElementById("certScore"),
+   certDate: document.getElementById("certDate"),
+    downloadCertBtn: document.getElementById("downloadCertBtn"),
+    shareResultsBtn: document.getElementById("shareResultsBtn"),
+    // Completion additions
+    ttsBtn: document.getElementById("ttsBtn"),
+    ambientMusicBtn: document.getElementById("ambientMusicBtn"),
+    performanceChart: document.getElementById("performanceChart"),
+    keyboardGuideModal: document.getElementById("keyboardGuideModal"),
+    closeKeyboardGuideBtn: document.getElementById("closeKeyboardGuideBtn"),
+    openKeyboardGuideBtn: document.getElementById("openKeyboardGuideBtn")
+  };
+
+// Initialize Particles.js
+if (typeof particlesJS !== 'undefined') {
+  particlesJS('particles-js', {
+    particles: {
+      number: { value: 80, density: { enable: true, value_area: 800 } },
+      color: { value: '#3b82f6' },
+      shape: { type: 'circle' },
+      opacity: { value: 0.5, random: true },
+      size: { value: 3, random: true },
+      line_linked: {
+        enable: true,
+        distance: 150,
+        color: '#3b82f6',
+        opacity: 0.2,
+        width: 1
+      },
+      move: {
+        enable: true,
+        speed: 2,
+        direction: 'none',
+        random: true,
+        straight: false,
+        out_mode: 'out',
+        bounce: false
+      }
+    },
+    interactivity: {
+      detect_on: 'window',
+      events: {
+        onhover: { enable: true, mode: 'grab' },
+        onclick: { enable: true, mode: 'push' },
+        resize: true
+      },
+      modes: {
+        grab: { distance: 140, line_linked: { opacity: 0.5 } },
+        push: { particles_nb: 4 }
+      }
+    },
+    retina_detect: true
+  });
+}
 
 function formatTime(totalSeconds) {
   const safe = Math.max(0, totalSeconds);
@@ -205,11 +335,90 @@ function playFeedbackTone(type) {
   osc.stop(now + 0.15);
 }
 
+function toggleAmbientMusic() {
+  const ctx = ensureAudioContext();
+  if (!ctx) return;
+
+  if (state.audio.ambientPlaying) {
+    state.audio.ambientOsc?.stop();
+    state.audio.ambientPlaying = false;
+    dom.ambientMusicBtn.textContent = "🎵 Musik: OFF";
+    dom.ambientMusicBtn.classList.remove("active");
+  } else {
+    // Simple harmonic ambient sound
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(110, ctx.currentTime); // Low A
+    
+    gain.gain.setValueAtTime(0.02, ctx.currentTime);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start();
+    state.audio.ambientOsc = osc;
+    state.audio.ambientPlaying = true;
+    dom.ambientMusicBtn.textContent = "🎵 Musik: ON";
+    dom.ambientMusicBtn.classList.add("active");
+  }
+}
+
+function speakQuestion() {
+  if (state.audio.speechSynthesis.speaking) {
+    state.audio.speechSynthesis.cancel();
+    dom.ttsBtn.classList.remove("speaking");
+    dom.ttsBtn.textContent = "🔊 Baca Soal";
+    return;
+  }
+
+  const q = state.questions[state.currentQuestionIndex];
+  if (!q) return;
+
+  const text = `${q.prompt}. Pilihan jawaban. A: ${q.options[0]}. B: ${q.options[1]}. C: ${q.options[2]}. D: ${q.options[3]}. E: ${q.options[4]}.`;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'id-ID';
+  utterance.rate = 0.9;
+
+  utterance.onstart = () => {
+    dom.ttsBtn.classList.add("speaking");
+    dom.ttsBtn.textContent = "⏹ Berhenti";
+  };
+  utterance.onend = () => {
+    dom.ttsBtn.classList.remove("speaking");
+    dom.ttsBtn.textContent = "🔊 Baca Soal";
+  };
+
+  state.audio.utterance = utterance;
+  state.audio.speechSynthesis.speak(utterance);
+}
+
 function applyTheme() {
-  document.body.classList.toggle("dark-theme", state.ui.darkTheme);
+  const isDark = state.ui.darkTheme;
+  document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+  dom.themeToggleBtn.textContent = isDark ? "Light Mode" : "Dark Mode";
+  
+  // Also update background color for particles visibility if needed
+  if (isDark) {
+    document.body.style.backgroundColor = "#0f172a";
+  } else {
+    document.body.style.backgroundColor = "#f8fafc";
+  }
+  
+  // Also keep old class for compatibility
+  document.body.classList.toggle("dark-theme", isDark);
   document.body.classList.toggle("corporate-theme", state.ui.corporateTheme);
-  dom.themeToggleBtn.textContent = state.ui.darkTheme ? "Tema Terang" : "Tema Gelap";
   dom.corporateThemeBtn.textContent = state.ui.corporateTheme ? "Corporate: ON" : "Corporate: OFF";
+
+  // Update particles color based on theme
+  if (typeof particlesJS !== 'undefined' && window.pJSDom && window.pJSDom[0]) {
+    try {
+      const pJS = window.pJSDom[0].pJS;
+      const color = isDark ? '#3b82f6' : '#2563eb';
+      pJS.particles.color.value = color;
+      pJS.particles.line_linked.color = color;
+      pJS.fn.particlesRefresh();
+    } catch (e) { console.warn("Particles refresh failed", e); }
+  }
 }
 
 function applySoundLabel() {
@@ -394,6 +603,14 @@ const SECTION_SHORTCUTS = {
     "Hindari opsi instan; jawaban terbaik biasanya sistematis dan berkelanjutan."
   ]
 };
+
+SECTION_SHORTCUTS.twk = SECTION_SHORTCUTS.umum;
+SECTION_SHORTCUTS.tiu = SECTION_SHORTCUTS.hitungan;
+SECTION_SHORTCUTS.tkp = SECTION_SHORTCUTS.kdkmp;
+SECTION_SHORTCUTS.akhlak = SECTION_SHORTCUTS.umum;
+SECTION_SHORTCUTS.numerik = SECTION_SHORTCUTS.hitungan;
+SECTION_SHORTCUTS.verbal = SECTION_SHORTCUTS.bahasa;
+SECTION_SHORTCUTS.manajerial = SECTION_SHORTCUTS.kdkmp;
 
 const TRAP_TIPS_BANK = {
   persen: {
@@ -593,7 +810,7 @@ const TRAP_DEEP_GUIDE = {
 
 function inferTrapType(question) {
   const text = `${question.prompt} ${question.explanation}`.toLowerCase();
-  if (question.sectionId === "hitungan") {
+  if (["hitungan", "tiu", "numerik"].includes(question.sectionId)) {
     if (text.includes("%") || text.includes("persen")) {
       return "persen";
     }
@@ -601,7 +818,7 @@ function inferTrapType(question) {
       return "rasio";
     }
   }
-  if (question.sectionId === "bahasa") {
+  if (["bahasa", "verbal"].includes(question.sectionId)) {
     if (text.includes("antonim") || text.includes("sinonim")) {
       return "antonim";
     }
@@ -618,10 +835,10 @@ function inferTrapType(question) {
   if (question.sectionId === "bentuk") {
     return "definisi_bentuk";
   }
-  if (question.sectionId === "kdkmp") {
+  if (["kdkmp", "tkp", "manajerial"].includes(question.sectionId)) {
     return "manajerial";
   }
-  if (question.sectionId === "umum") {
+  if (["umum", "twk", "akhlak"].includes(question.sectionId)) {
     return "kebijakan_umum";
   }
   return "umum";
@@ -998,11 +1215,91 @@ function shuffleQuestionOptions(question) {
   };
 }
 
+function getCurrentProfile() {
+  return EXAM_PROFILES[state.examType] || EXAM_PROFILES.kdkmp;
+}
+
+function getExamTypeLabel(examType) {
+  return EXAM_PROFILES[examType]?.label || "Simulasi Umum";
+}
+
+function renderExamDetails() {
+  const profile = getCurrentProfile();
+  dom.appTitle.textContent = profile.headline;
+  dom.appSubtitle.textContent = profile.subtitle;
+  if (dom.examDetailList) {
+    dom.examDetailList.innerHTML = "";
+    profile.blueprint.forEach((item) => {
+      const li = document.createElement("li");
+      li.textContent = `${item.title}: ${item.count} soal (${item.durationMin} menit)`;
+      dom.examDetailList.appendChild(li);
+    });
+  }
+  const totalSoal = profile.blueprint.reduce((sum, x) => sum + x.count, 0);
+  const totalMenit = profile.blueprint.reduce((sum, x) => sum + x.durationMin, 0);
+  if (dom.badge) {
+    dom.badge.textContent = `${profile.label} • ${totalSoal} Soal • ${totalMenit} Menit`;
+  }
+}
+
+function loadTopScores() {
+  try {
+    const raw = localStorage.getItem(LOCAL_TOP_SCORE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_error) {
+    return [];
+  }
+}
+
+function saveTopScores(list) {
+  localStorage.setItem(LOCAL_TOP_SCORE_KEY, JSON.stringify(list));
+}
+
+function addTopScoreEntry(result) {
+  const list = loadTopScores();
+  list.push({
+    examType: state.examType,
+    examLabel: getExamTypeLabel(state.examType),
+    name: state.participant.name,
+    participantId: state.participant.id,
+    score100: Number(result.score100),
+    finishedAt: new Date().toISOString()
+  });
+  list.sort((a, b) => b.score100 - a.score100);
+  saveTopScores(list.slice(0, 30));
+}
+
+function renderTopScores() {
+  const list = loadTopScores();
+  dom.leaderboardBody.innerHTML = "";
+  if (list.length === 0) {
+    dom.leaderboardBody.innerHTML = `
+      <div class="leaderboard-row empty">
+        <p>Belum ada data skor. Jadilah yang pertama!</p>
+      </div>
+    `;
+    return;
+  }
+  list.forEach((item, idx) => {
+    const row = document.createElement("div");
+    row.className = "leaderboard-row";
+    const rankClass = idx < 3 ? `rank-${idx + 1}` : "";
+    row.innerHTML = `
+      <div><span class="rank-badge ${rankClass}">${idx + 1}</span></div>
+      <div><strong>${item.name}</strong><br><small class="muted">${item.participantId}</small></div>
+      <div>${item.examLabel || getExamTypeLabel(item.examType)}</div>
+      <div><strong class="text-primary">${Number(item.score100).toFixed(2)}</strong></div>
+    `;
+    dom.leaderboardBody.appendChild(row);
+  });
+}
+
 function getActiveBlueprint() {
   if (state.customBank && Array.isArray(state.customBank.blueprint) && state.customBank.blueprint.length > 0) {
     return state.customBank.blueprint;
   }
-  return TEST_BLUEPRINT;
+  return getCurrentProfile().blueprint;
 }
 
 function normalizeImportedQuestion(raw) {
@@ -1094,24 +1391,39 @@ async function toggleFullscreen() {
   await document.exitFullscreen();
 }
 
+function generateQuestionsBySection(sectionId, count) {
+  const generatorMap = {
+    bahasa: generateBahasa,
+    verbal: generateBahasa,
+    hitungan: generateHitungan,
+    tiu: generateHitungan,
+    numerik: generateHitungan,
+    umum: generatePengetahuanUmum,
+    twk: generatePengetahuanUmum,
+    akhlak: generateAKHLAK,
+    pola: generatePola,
+    ruang: generateAbstraksiRuang,
+    bentuk: generateBentuk,
+    kdkmp: generateKDKMP,
+    tkp: generateTKP,
+    manajerial: generateKDKMP
+  };
+  const generator = generatorMap[sectionId] || generatePengetahuanUmum;
+  return generator(Math.max(0, Number(count) || 0));
+}
+
 function buildQuestionBank() {
   const blueprint = getActiveBlueprint();
-  const bySection = state.customBank?.sections || {
-    bahasa: generateBahasa(TEST_BLUEPRINT[0].count),
-    hitungan: generateHitungan(TEST_BLUEPRINT[1].count),
-    umum: generatePengetahuanUmum(TEST_BLUEPRINT[2].count),
-    pola: generatePola(TEST_BLUEPRINT[3].count),
-    ruang: generateAbstraksiRuang(TEST_BLUEPRINT[4].count),
-    bentuk: generateBentuk(TEST_BLUEPRINT[5].count),
-    kdkmp: generateKDKMP(TEST_BLUEPRINT[6].count)
-  };
+  const bySection = state.customBank?.sections || Object.fromEntries(
+    blueprint.map((section) => [section.id, generateQuestionsBySection(section.id, section.count)])
+  );
 
   const questions = [];
   const ranges = {};
   let globalIndex = 0;
 
   blueprint.forEach((section) => {
-    let pool = bySection[section.id] || [];
+    let pool = (bySection[section.id] || []).slice(0, section.count);
     if (state.settings.shuffleQuestions) {
       pool = shuffleArray(pool);
     }
@@ -1500,6 +1812,54 @@ function generatePengetahuanUmum(count) {
   return out;
 }
 
+function generateTKP(count) {
+  const bank = [
+    [
+      "Anda melihat rekan kerja melakukan kesalahan prosedur yang cukup fatal tapi tidak ada yang tahu. Tindakan Anda adalah ...",
+      "Menegurnya secara pribadi dan membantunya memperbaiki kesalahan tersebut",
+      "Integritas dan kolaborasi menuntut kita berani meluruskan kesalahan dengan cara yang tepat."
+    ],
+    [
+      "Menjelang jam pulang, atasan memberikan tugas mendadak yang harus selesai besok pagi. Sikap Anda adalah ...",
+      "Mengerjakannya dengan penuh tanggung jawab meski harus lembur sebentar",
+      "Profesionalisme dan loyalitas pada tugas adalah nilai utama dalam pelayanan publik."
+    ],
+    [
+      "Seorang pelanggan marah-marah karena merasa pelayanan terlalu lambat. Anda akan ...",
+      "Tetap tenang, mendengarkan keluhan, dan memberikan penjelasan serta solusi dengan sopan",
+      "Orientasi pelayanan menuntut kesabaran dan kemampuan problem solving yang baik."
+    ],
+    [
+      "Dalam diskusi kelompok, ide Anda ditolak oleh mayoritas anggota. Reaksi Anda ...",
+      "Menerima keputusan tersebut dengan lapang dada dan mendukung ide yang terpilih",
+      "Kemampuan bekerja sama dan berlapang dada adalah kunci keharmonisan tim."
+    ],
+    [
+      "Ada perubahan sistem kerja baru yang lebih kompleks dan menggunakan teknologi baru. Anda akan ...",
+      "Mempelajarinya dengan antusias agar cepat menguasai sistem tersebut",
+      "Nilai adaptif dan kemauan belajar sangat penting dalam menghadapi perubahan."
+    ],
+    [
+      "Rekan kerja Anda sedang mengalami kesulitan pribadi yang memengaruhi kinerjanya. Anda akan ...",
+      "Memberikan dukungan moral dan menawarkan bantuan jika memungkinkan",
+      "Empati dan keharmonisan lingkungan kerja meningkatkan produktivitas tim."
+    ]
+  ];
+  const distractWord = ["Marah", "Diam saja", "Lapor atasan langsung", "Mengabaikan", "Protes keras"];
+  const out = [];
+  for (let i = 0; i < count; i += 1) {
+    const item = bank[i % bank.length];
+    out.push(createQuestion(
+      `Tes Karakteristik Pribadi: ${item[0]}`,
+      item[1],
+      distractWord.concat(bank.map((b) => b[1])).filter((x) => x !== item[1]),
+      `Kunci: "${item[1]}". ${item[2]}`,
+      i % 5
+    ));
+  }
+  return out;
+}
+
 function generatePola(count) {
   const out = [];
   for (let i = 0; i < count; i += 1) {
@@ -1768,6 +2128,40 @@ function generateBentuk(count) {
       explanation: item.e,
       visual: item.visual
     });
+  }
+  return out;
+}
+
+function generateAKHLAK(count) {
+  const bank = [
+    ["Amanah dalam konteks Core Values BUMN berarti ...", "Memegang teguh kepercayaan yang diberikan", "Amanah berarti integritas dan tanggung jawab atas janji/tugas."],
+    ["Kompeten berarti terus belajar dan mengembangkan kapabilitas. Salah satu perilakunya adalah ...", "Meningkatkan kompetensi diri untuk menjawab tantangan yang selalu berubah", "Kompeten fokus pada pengembangan diri dan kualitas hasil kerja."],
+    ["Harmonis menekankan pada nilai ...", "Saling peduli dan menghargai perbedaan", "Harmonis menciptakan lingkungan kerja yang kondusif dan inklusif."],
+    ["Loyal berarti berdedikasi dan mengutamakan kepentingan Bangsa dan Negara. Contoh perilakunya adalah ...", "Menjaga nama baik sesama karyawan, pimpinan, BUMN, dan Negara", "Loyalitas ditunjukkan dengan menjaga reputasi dan integritas instansi."],
+    ["Adaptif berarti terus berinovasi dan antusias dalam menggerakkan ataupun menghadapi perubahan. Contoh perilakunya ...", "Cepat menyesuaikan diri untuk menjadi lebih baik", "Adaptabilitas kunci dalam menghadapi disrupsi digital dan bisnis."],
+    ["Kolaboratif berarti membangun kerja sama yang sinergis. Perilaku utamanya adalah ...", "Memberi kesempatan kepada berbagai pihak untuk berkontribusi", "Kolaborasi mengutamakan sinergi untuk nilai tambah bersama."],
+    ["Apa kepanjangan dari AKHLAK?", "Amanah, Kompeten, Harmonis, Loyal, Adaptif, Kolaboratif", "AKHLAK adalah identitas dan perekat budaya kerja BUMN."],
+    ["Menghargai setiap orang apapun latar belakangnya adalah cerminan nilai ...", "Harmonis", "Saling menghargai adalah fondasi dari nilai Harmonis."],
+    ["Menuntaskan tugas dengan kualitas terbaik adalah cerminan nilai ...", "Kompeten", "Hasil terbaik adalah output dari kompetensi yang dikembangkan."],
+    ["Menjaga rahasia jabatan dan negara adalah cerminan nilai ...", "Loyal", "Kerahasiaan dan integritas adalah bagian dari loyalitas pada bangsa."]
+  ];
+  const globalDistract = [
+    "Jujur, Disiplin, Tanggung Jawab",
+    "Profesionalisme dan Mandiri",
+    "Efisiensi dan Efektivitas",
+    "Orientasi Pelanggan",
+    "Inovasi Berkelanjutan"
+  ];
+  const out = [];
+  for (let i = 0; i < count; i += 1) {
+    const item = bank[i % bank.length];
+    out.push(createQuestion(
+      `Core Values BUMN (AKHLAK): ${item[0]}`,
+      item[1],
+      globalDistract.concat(bank.map((b) => b[1])).filter((x) => x !== item[1]),
+      `Kunci: "${item[1]}". ${item[2]}`,
+      i % 5
+    ));
   }
   return out;
 }
@@ -2087,6 +2481,12 @@ function renderExam() {
   dom.prevBtn.disabled = state.currentQuestionIndex === range.start;
   dom.nextBtn.disabled = state.currentQuestionIndex === range.end;
 
+  // Update Question Progress Bar
+  const totalQuestions = state.questions.length;
+  const answeredCount = state.answers.filter(a => a !== null).length;
+  const progressPercent = (answeredCount / totalQuestions) * 100;
+  dom.questionProgressBar.style.width = `${progressPercent}%`;
+
   renderTopBar();
   renderQuickTips(section.id, q);
   renderInstantStrategy(q);
@@ -2095,6 +2495,8 @@ function renderExam() {
   if (state.ui.lastRenderedQuestionIndex !== state.currentQuestionIndex) {
     flashTipsCard();
     state.ui.lastRenderedQuestionIndex = state.currentQuestionIndex;
+    state.ui.questionStartTime = Date.now();
+    state.ui.smartTipShown = false;
   }
   renderTrapGuide(q);
   renderSegmentPills();
@@ -2195,11 +2597,42 @@ function tick() {
 
   dom.totalTimer.textContent = formatTime(state.totalRemaining);
   dom.segmentTimer.textContent = formatTime(state.segmentRemaining);
+
+  // Smart Tip Check
+  if (!state.ui.smartTipShown && !state.ui.remedialActive && dom.examScreen.classList.contains("active")) {
+    const elapsed = (Date.now() - state.ui.questionStartTime) / 1000;
+    if (elapsed > 30) {
+      state.ui.smartTipShown = true;
+      showSmartTipToast();
+    }
+  }
+}
+
+function showSmartTipToast() {
+  const q = state.questions[state.currentQuestionIndex];
+  if (!q) return;
+  const guide = TRAP_GUIDE_DB[q.trapType] || TRAP_GUIDE_DB["default"];
+  
+  // Create a temporary toast for the smart tip
+  const toast = document.createElement("div");
+  toast.className = "smart-tip-toast";
+  toast.innerHTML = `
+    <div class="toast-content">
+      <strong>💡 Tips Cerdas:</strong> Kamu sudah 30 detik di soal ini. Coba strategi: <em>${guide.avoid}</em>
+    </div>
+  `;
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.classList.add("fade-out");
+    setTimeout(() => toast.remove(), 500);
+  }, 5000);
 }
 
 function startExam() {
   const name = dom.participantName.value.trim();
   const id = dom.participantId.value.trim();
+  // state.examType is already set when selecting category card
   if (!name || !id) {
     alert("Nama dan nomor peserta wajib diisi.");
     return;
@@ -2207,6 +2640,7 @@ function startExam() {
 
   state.settings.shuffleQuestions = dom.shuffleQuestions.checked;
   state.settings.shuffleOptions = dom.shuffleOptions.checked;
+  state.ui.focusMode = dom.enableFocusModeInit.checked;
 
   const built = buildQuestionBank();
   if (!built.questions.length) {
@@ -2220,16 +2654,18 @@ function startExam() {
   state.flagged = new Set();
   state.ui.tipOffset = 0;
   state.ui.trapGuideOpen = false;
-  state.ui.focusMode = false;
+  // Apply initial focus mode
+  document.body.classList.toggle("focus-mode", state.ui.focusMode);
+  dom.focusModeBtn.textContent = state.ui.focusMode ? "Matikan Mode Fokus" : "Mode Fokus";
+  
   state.ui.lastRenderedQuestionIndex = -1;
   state.ui.lastQuestionBySection = {};
   state.ui.wrongStreak = 0;
   state.ui.correctStreak = 0;
   state.ui.bestCorrectStreak = 0;
   state.ui.remedialActive = false;
-  document.body.classList.remove("focus-mode");
+  
   dom.showTrapGuideBtn.textContent = "Lihat Panduan Jebakan";
-  dom.focusModeBtn.textContent = "Mode Fokus";
   state.currentSegmentIndex = 0;
   state.finished = false;
   state.result = null;
@@ -2239,7 +2675,9 @@ function startExam() {
   state.totalRemaining = getActiveBlueprint().reduce((sum, s) => sum + s.durationMin * 60, 0);
   state.segmentRemaining = getActiveBlueprint()[0].durationMin * 60;
 
-  dom.badge.textContent = `${state.questions.length} Soal • ${Math.floor(state.totalRemaining / 60)} Menit`;
+  if (dom.badge) {
+    dom.badge.textContent = `${state.questions.length} Soal • ${Math.floor(state.totalRemaining / 60)} Menit`;
+  }
 
   if (state.timerId) {
     clearInterval(state.timerId);
@@ -2338,24 +2776,6 @@ function buildTutorQueue() {
     queue.push(...shuffleArray(supportPool).slice(0, 10 - queue.length));
   }
   return { focusTrapTypes: focus, queue };
-}
-
-function renderWeakTrapAnalysis() {
-  const analysis = analyzeWeakTraps().filter((x) => x.total > 0).slice(0, 5);
-  dom.weakTrapList.innerHTML = "";
-  analysis.forEach((a) => {
-    const li = document.createElement("li");
-    const pct = Math.round(a.errorRate * 100);
-    li.textContent = `${a.label}: ${a.mistakes}/${a.total} belum tepat (${pct}%).`;
-    dom.weakTrapList.appendChild(li);
-  });
-  const canTutor = analysis.some((x) => x.mistakes > 0);
-  dom.startTutorBtn.disabled = !canTutor;
-  if (!canTutor) {
-    const li = document.createElement("li");
-    li.textContent = "Akurasi sudah sangat baik. Tutor adaptif tidak diperlukan saat ini.";
-    dom.weakTrapList.appendChild(li);
-  }
 }
 
 function resetTutorState() {
@@ -2470,8 +2890,97 @@ function finishExam(message) {
   setActiveScreen(dom.resultScreen);
 }
 
+function renderSmartAnalytics() {
+  const r = state.result;
+  const score = Number(r.score100);
+  
+  // Passing Prediction
+  let prediction = "Rendah";
+  let color = "var(--danger)";
+  if (score >= 80) {
+    prediction = "Sangat Tinggi";
+    color = "var(--ok)";
+  } else if (score >= 65) {
+    prediction = "Tinggi";
+    color = "#2d6fe4";
+  } else if (score >= 50) {
+    prediction = "Sedang";
+    color = "var(--warn)";
+  }
+  dom.passingPrediction.textContent = prediction;
+  dom.passingPrediction.style.color = color;
+
+  // Average Speed
+  const totalDurationUsed = (getActiveBlueprint().reduce((sum, s) => sum + s.durationMin * 60, 0)) - state.totalRemaining;
+  const answeredCount = state.answers.filter(a => a !== null).length;
+  const speed = answeredCount > 0 ? (totalDurationUsed / answeredCount).toFixed(1) : 0;
+  dom.avgSpeed.textContent = `${speed} detik/soal`;
+
+  // Render Chart
+  dom.performanceChart.innerHTML = "";
+  r.sectionStats.forEach(s => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "chart-bar-wrapper";
+    
+    const bar = document.createElement("div");
+    bar.className = "chart-bar";
+    bar.style.height = "0%"; // Start from 0 for animation
+    bar.setAttribute("data-value", s.nilai);
+    
+    const label = document.createElement("div");
+    label.className = "chart-label";
+    label.textContent = s.sectionTitle;
+    label.title = s.sectionTitle;
+    
+    wrapper.appendChild(bar);
+    wrapper.appendChild(label);
+    dom.performanceChart.appendChild(wrapper);
+    
+    // Trigger animation
+    setTimeout(() => {
+      bar.style.height = `${s.nilai}%`;
+    }, 100);
+  });
+
+  // Recommendations
+  const weakTraps = getLiveTrapStats(3);
+  dom.recommendationList.innerHTML = "";
+  
+  // AI Feedback Logic
+  const stressLi = document.createElement("li");
+  const usedRatio = totalDurationUsed / (getActiveBlueprint().reduce((sum, s) => sum + s.durationMin * 60, 0));
+  if (usedRatio > 0.9) {
+    stressLi.innerHTML = "<strong>🤖 AI Analis:</strong> Kamu sangat tertekan oleh waktu. Jangan terlalu perfeksionis di subtes awal.";
+  } else if (score < 50) {
+    stressLi.innerHTML = "<strong>🤖 AI Analis:</strong> Fokus pada pemahaman konsep dasar sebelum mencoba simulasi waktu penuh.";
+  } else {
+    stressLi.innerHTML = "<strong>🤖 AI Analis:</strong> Performa stabil. Pertahankan ritme ini untuk ujian sebenarnya.";
+  }
+  dom.recommendationList.appendChild(stressLi);
+
+  if (weakTraps.length > 0) {
+    weakTraps.forEach(trap => {
+      const li = document.createElement("li");
+      li.textContent = `Perkuat pemahaman pada pola "${trap.label}" (Akurasi: ${trap.accuracy}%)`;
+      dom.recommendationList.appendChild(li);
+    });
+  }
+}
+
+function showCertificate() {
+  const r = state.result;
+  dom.certName.textContent = state.participant.name.toUpperCase();
+  dom.certExamType.textContent = getExamTypeLabel(state.examType).toUpperCase();
+  dom.certScore.textContent = r.score100;
+  dom.certDate.textContent = new Date().toLocaleDateString("id-ID", { 
+    day: 'numeric', month: 'long', year: 'numeric' 
+  });
+  dom.certificateModal.classList.add("active");
+}
+
 function renderResult(message) {
   const r = state.result;
+  addTopScoreEntry(r);
   dom.finalScore.textContent = r.score100;
   dom.finalSummary.textContent = `Benar ${r.totalCorrect} | Salah ${r.totalWrong} | Kosong ${r.totalEmpty}`;
   dom.resultName.textContent = `Nama: ${state.participant.name}`;
@@ -2491,7 +3000,31 @@ function renderResult(message) {
     `;
     dom.sectionResultBody.appendChild(tr);
   });
-  renderWeakTrapAnalysis();
+  
+  // Performance Comparison Logic
+  const topScores = loadTopScores();
+  const currentScore = Number(r.score100);
+  dom.yourScoreVal.textContent = currentScore;
+  
+  if (topScores.length > 0) {
+    const top10 = topScores.slice(0, 10);
+    const avg = top10.reduce((sum, x) => sum + x.score100, 0) / top10.length;
+    dom.avgTopScoreVal.textContent = avg.toFixed(1);
+    
+    if (currentScore > avg) {
+      dom.comparisonNote.textContent = "Luar biasa! Skor Anda di atas rata-rata peserta terbaik.";
+      dom.comparisonNote.style.color = "var(--ok)";
+    } else {
+      dom.comparisonNote.textContent = "Skor Anda sedikit di bawah rata-rata top score. Teruslah berlatih!";
+      dom.comparisonNote.style.color = "var(--warn)";
+    }
+  } else {
+    dom.avgTopScoreVal.textContent = "-";
+    dom.comparisonNote.textContent = "Anda adalah peserta pertama yang mencatat skor!";
+  }
+
+  renderSmartAnalytics();
+  renderTopScores();
 
   if (message) {
     alert(message);
@@ -2534,6 +3067,55 @@ function renderReview() {
 
 dom.startBtn.addEventListener("click", startExam);
 
+dom.examCards.forEach((card) => {
+  card.addEventListener("click", (e) => {
+    e.preventDefault();
+    const type = card.getAttribute("data-type");
+    console.log("Exam card clicked:", type);
+    
+    state.examType = type;
+    state.customBank = null;
+    updateBankInfoText();
+    renderExamDetails();
+    
+    dom.selectedExamTitle.textContent = getExamTypeLabel(type);
+    dom.examCategoryGrid.classList.add("hidden");
+    dom.registrationForm.classList.remove("hidden");
+    
+    // Scroll with small delay to ensure visibility
+    setTimeout(() => {
+      dom.registrationForm.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
+  });
+});
+
+// Also bind the inner buttons if they exist
+document.querySelectorAll(".select-exam-btn").forEach(btn => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const type = btn.getAttribute("data-type");
+    console.log("Select exam button clicked:", type);
+    // Find parent card and trigger its click
+    const card = btn.closest(".exam-card");
+    if (card) card.click();
+  });
+});
+
+dom.backToCategories.addEventListener("click", () => {
+  dom.registrationForm.classList.add("hidden");
+  dom.examCategoryGrid.classList.remove("hidden");
+});
+
+// Remove old examType change listener if it exists
+if (dom.examType) {
+  dom.examType.addEventListener("change", () => {
+    state.customBank = null;
+    updateBankInfoText();
+    state.examType = dom.examType.value || "kdkmp";
+    renderExamDetails();
+  });
+}
+
 dom.importBankBtn.addEventListener("click", () => {
   dom.bankFileInput.click();
 });
@@ -2548,13 +3130,24 @@ dom.bankFileInput.addEventListener("change", async (event) => {
     const parsed = JSON.parse(text);
     state.customBank = parseCustomBank(parsed);
     updateBankInfoText();
-    dom.badge.textContent = `${state.customBank.blueprint.reduce((sum, x) => sum + x.count, 0)} Soal • Custom`;
+    if (dom.badge) {
+      dom.badge.textContent = `${state.customBank.blueprint.reduce((sum, x) => sum + x.count, 0)} Soal • Custom`;
+    }
     alert("Import bank soal berhasil.");
   } catch (error) {
     alert(`Import gagal: ${error.message}`);
   } finally {
     dom.bankFileInput.value = "";
   }
+});
+
+dom.clearLeaderboardBtn.addEventListener("click", () => {
+  const ok = confirm("Reset semua top score lokal pada perangkat ini?");
+  if (!ok) {
+    return;
+  }
+  saveTopScores([]);
+  renderTopScores();
 });
 
 dom.prevBtn.addEventListener("click", () => {
@@ -2648,6 +3241,7 @@ dom.openStrategyBtn.addEventListener("click", () => {
 
 dom.themeToggleBtn.addEventListener("click", () => {
   state.ui.darkTheme = !state.ui.darkTheme;
+  console.log("Theme toggle clicked, isDark:", state.ui.darkTheme);
   applyTheme();
 });
 
@@ -2700,6 +3294,43 @@ dom.tutorNextBtn.addEventListener("click", () => {
 
 dom.tutorFinishBtn.addEventListener("click", () => {
   finishAdaptiveTutor();
+});
+
+dom.generateCertificateBtn.addEventListener("click", () => {
+  showCertificate();
+});
+
+dom.closeCertificateBtn.addEventListener("click", () => {
+  dom.certificateModal.classList.remove("active");
+});
+
+dom.downloadCertBtn.addEventListener("click", () => {
+  window.print();
+});
+
+dom.ttsBtn.addEventListener("click", () => {
+  speakQuestion();
+});
+
+dom.ambientMusicBtn.addEventListener("click", () => {
+  toggleAmbientMusic();
+});
+
+dom.shareResultsBtn.addEventListener("click", () => {
+  const score = state.result.score100;
+  const exam = getExamTypeLabel(state.examType);
+  const text = `Saya baru saja menyelesaikan ${exam} di Simulasi Ujian Nusantara dengan skor ${score}! Coba juga di: ${window.location.href}`;
+  
+  if (navigator.share) {
+    navigator.share({
+      title: 'Hasil Simulasi Ujian',
+      text: text,
+      url: window.location.href,
+    }).catch(console.error);
+  } else {
+    navigator.clipboard.writeText(text);
+    alert("Teks hasil telah disalin ke clipboard!");
+  }
 });
 
 dom.backToResultBtn.addEventListener("click", () => {
@@ -2756,9 +3387,34 @@ document.addEventListener("keydown", (event) => {
     }
     renderExam();
     event.preventDefault();
+    return;
+  }
+  if (event.key === " ") {
+    event.preventDefault();
+    speakQuestion();
+    return;
+  }
+  if (event.key === "Escape") {
+    dom.strategyModal.classList.remove("active");
+    dom.certificateModal.classList.remove("active");
+    dom.keyboardGuideModal.classList.remove("active");
+    return;
   }
 });
 
+dom.closeKeyboardGuideBtn.addEventListener("click", () => {
+  dom.keyboardGuideModal.classList.remove("active");
+});
+
+dom.openKeyboardGuideBtn.addEventListener("click", () => {
+  dom.keyboardGuideModal.classList.add("active");
+});
+
 updateBankInfoText();
+if (dom.examType) {
+  dom.examType.value = state.examType;
+}
+renderExamDetails();
+renderTopScores();
 applyTheme();
 applySoundLabel();
