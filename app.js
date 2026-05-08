@@ -10,6 +10,8 @@ const KDKMP_BLUEPRINT = [
 
 const ALPHABET = ["A", "B", "C", "D", "E"];
 const LOCAL_TOP_SCORE_KEY = "simulasi_ujian_top_scores_v1";
+const LOCAL_USER_KEY = "simulasi_ujian_user_v1";
+const LOCAL_HISTORY_KEY = "simulasi_ujian_history_v1";
 
 const EXAM_PROFILES = {
   cpns: {
@@ -66,6 +68,8 @@ const state = {
   timerId: null,
   finished: false,
   result: null,
+  currentUser: null,
+  history: [],
   settings: {
     shuffleQuestions: false,
     shuffleOptions: true
@@ -241,7 +245,37 @@ const dom = {
     performanceChart: document.getElementById("performanceChart"),
     keyboardGuideModal: document.getElementById("keyboardGuideModal"),
     closeKeyboardGuideBtn: document.getElementById("closeKeyboardGuideBtn"),
-    openKeyboardGuideBtn: document.getElementById("openKeyboardGuideBtn")
+    openKeyboardGuideBtn: document.getElementById("openKeyboardGuideBtn"),
+    // Auth and Navigation
+    loginNavBtn: document.getElementById("loginNavBtn"),
+    authModal: document.getElementById("authModal"),
+    closeAuthBtn: document.getElementById("closeAuthBtn"),
+    tabLogin: document.getElementById("tabLogin"),
+    tabRegister: document.getElementById("tabRegister"),
+    loginFormArea: document.getElementById("loginFormArea"),
+    registerFormArea: document.getElementById("registerFormArea"),
+    loginForm: document.getElementById("loginForm"),
+    registerForm: document.getElementById("registerForm"),
+    userProfileHeader: document.getElementById("userProfileHeader"),
+    headerUserName: document.getElementById("headerUserName"),
+    logoutBtn: document.getElementById("logoutBtn"),
+    dashboardNavBtn: document.getElementById("dashboardNavBtn"),
+    dashboardScreen: document.getElementById("dashboardScreen"),
+    materialsScreen: document.getElementById("materialsScreen"),
+    backToHomeBtns: document.querySelectorAll(".back-to-home"),
+    // Dashboard Stats
+    dashTotalExams: document.getElementById("dashTotalExams"),
+    dashAvgScore: document.getElementById("dashAvgScore"),
+    dashGlobalAccuracy: document.getElementById("dashGlobalAccuracy"),
+    dashRecentExams: document.getElementById("dashRecentExams"),
+    dashRecommendations: document.getElementById("dashRecommendations"),
+    // Payment
+    paymentModal: document.getElementById("paymentModal"),
+    closePaymentBtn: document.getElementById("closePaymentBtn"),
+    confirmPaymentBtn: document.getElementById("confirmPaymentBtn"),
+    selectedPackageName: document.getElementById("selectedPackageName"),
+    selectedPackagePrice: document.getElementById("selectedPackagePrice"),
+    pricingBtns: document.querySelectorAll(".pricing-card button")
   };
 
 // Initialize Particles.js
@@ -2387,9 +2421,11 @@ function generateKDKMP(count) {
 }
 
 function setActiveScreen(screenId) {
-  const all = [dom.startScreen, dom.examScreen, dom.resultScreen, dom.tutorScreen, dom.reviewScreen];
-  all.forEach((el) => el.classList.remove("active"));
-  screenId.classList.add("active");
+  const all = [dom.startScreen, dom.examScreen, dom.resultScreen, dom.tutorScreen, dom.reviewScreen, dom.dashboardScreen, dom.materialsScreen];
+  all.forEach((el) => {
+    if (el) el.classList.remove("active");
+  });
+  if (screenId) screenId.classList.add("active");
 }
 
 function currentSection() {
@@ -2917,30 +2953,7 @@ function renderSmartAnalytics() {
   dom.avgSpeed.textContent = `${speed} detik/soal`;
 
   // Render Chart
-  dom.performanceChart.innerHTML = "";
-  r.sectionStats.forEach(s => {
-    const wrapper = document.createElement("div");
-    wrapper.className = "chart-bar-wrapper";
-    
-    const bar = document.createElement("div");
-    bar.className = "chart-bar";
-    bar.style.height = "0%"; // Start from 0 for animation
-    bar.setAttribute("data-value", s.nilai);
-    
-    const label = document.createElement("div");
-    label.className = "chart-label";
-    label.textContent = s.sectionTitle;
-    label.title = s.sectionTitle;
-    
-    wrapper.appendChild(bar);
-    wrapper.appendChild(label);
-    dom.performanceChart.appendChild(wrapper);
-    
-    // Trigger animation
-    setTimeout(() => {
-      bar.style.height = `${s.nilai}%`;
-    }, 100);
-  });
+  renderResultChart(r.sectionStats);
 
   // Recommendations
   const weakTraps = getLiveTrapStats(3);
@@ -2981,6 +2994,7 @@ function showCertificate() {
 function renderResult(message) {
   const r = state.result;
   addTopScoreEntry(r);
+  saveResultToHistory(r); // Save to user history
   dom.finalScore.textContent = r.score100;
   dom.finalSummary.textContent = `Benar ${r.totalCorrect} | Salah ${r.totalWrong} | Kosong ${r.totalEmpty}`;
   dom.resultName.textContent = `Nama: ${state.participant.name}`;
@@ -3062,6 +3076,150 @@ function renderReview() {
       </div>
     `;
     dom.reviewList.appendChild(item);
+  });
+}
+
+// --- NEW FEATURES: AUTH & DASHBOARD ---
+
+function loadUserData() {
+  const saved = localStorage.getItem(LOCAL_USER_KEY);
+  if (saved) {
+    state.currentUser = JSON.parse(saved);
+    updateUserUI();
+  }
+}
+
+function saveUserData(user) {
+  state.currentUser = user;
+  localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(user));
+  updateUserUI();
+}
+
+function updateUserUI() {
+  if (state.currentUser) {
+    dom.loginNavBtn.classList.add("hidden");
+    dom.userProfileHeader.classList.remove("hidden");
+    dom.headerUserName.textContent = state.currentUser.name;
+    dom.participantName.value = state.currentUser.name;
+    dom.participantId.value = state.currentUser.id || "USER-" + Math.floor(Math.random() * 1000);
+  } else {
+    dom.loginNavBtn.classList.remove("hidden");
+    dom.userProfileHeader.classList.add("hidden");
+  }
+}
+
+function loadHistory() {
+  const saved = localStorage.getItem(LOCAL_HISTORY_KEY);
+  state.history = saved ? JSON.parse(saved) : [];
+}
+
+function saveResultToHistory(result) {
+  const entry = {
+    id: Date.now(),
+    date: new Date().toISOString(),
+    examType: state.examType,
+    examLabel: getExamTypeLabel(state.examType),
+    score: result.score100,
+    correct: result.totalCorrect,
+    total: state.questions.length
+  };
+  state.history.unshift(entry);
+  localStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify(state.history.slice(0, 20))); // Keep last 20
+}
+
+function renderDashboard() {
+  loadHistory();
+  const history = state.history;
+  
+  dom.dashTotalExams.textContent = history.length;
+  
+  if (history.length > 0) {
+    const avgScore = history.reduce((sum, h) => sum + Number(h.score), 0) / history.length;
+    dom.dashAvgScore.textContent = avgScore.toFixed(1);
+    
+    const totalCorrect = history.reduce((sum, h) => sum + h.correct, 0);
+    const totalQuestions = history.reduce((sum, h) => sum + h.total, 0);
+    const globalAcc = (totalCorrect / totalQuestions) * 100;
+    dom.dashGlobalAccuracy.textContent = globalAcc.toFixed(1) + "%";
+    
+    dom.dashRecentExams.innerHTML = history.slice(0, 5).map(h => `
+      <div class="recent-item">
+        <div>
+          <strong>${h.examLabel}</strong><br>
+          <small class="muted">${new Date(h.date).toLocaleDateString()}</small>
+        </div>
+        <strong>${h.score}</strong>
+      </div>
+    `).join("");
+
+    // Simple AI Recommendation based on latest score
+    const latest = history[0];
+    if (latest.score < 60) {
+      dom.dashRecommendations.innerHTML = `
+        <li>Fokus pada materi dasar ${latest.examLabel}.</li>
+        <li>Tonton video tutorial di menu Materi.</li>
+        <li>Gunakan Mode Tutor Adaptif lebih sering.</li>
+      `;
+    } else {
+      dom.dashRecommendations.innerHTML = `
+        <li>Performa bagus! Coba simulasi campuran untuk tantangan lebih.</li>
+        <li>Latih kecepatan pengerjaan soal hitungan.</li>
+        <li>Review kembali soal-soal yang masih ragu.</li>
+      `;
+    }
+  } else {
+    dom.dashAvgScore.textContent = "0";
+    dom.dashGlobalAccuracy.textContent = "0%";
+    dom.dashRecentExams.innerHTML = '<p class="muted">Belum ada riwayat ujian.</p>';
+  }
+}
+
+// --- NEW FEATURES: CHART.JS INTEGRATION ---
+let performanceChartInstance = null;
+
+function renderResultChart(stats) {
+  const ctx = document.getElementById('performanceChartCanvas');
+  if (!ctx) {
+    // If canvas doesn't exist, create it inside the container
+    dom.performanceChart.innerHTML = '<canvas id="performanceChartCanvas"></canvas>';
+    renderResultChart(stats);
+    return;
+  }
+
+  if (performanceChartInstance) {
+    performanceChartInstance.destroy();
+  }
+
+  const labels = stats.map(s => s.sectionTitle);
+  const data = stats.map(s => s.nilai);
+
+  performanceChartInstance = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Skor Subtes (%)',
+        data: data,
+        backgroundColor: 'rgba(15, 74, 162, 0.2)',
+        borderColor: 'rgba(15, 74, 162, 1)',
+        borderWidth: 2,
+        pointBackgroundColor: 'rgba(15, 74, 162, 1)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          beginAtZero: true,
+          max: 100,
+          ticks: { stepSize: 20 }
+        }
+      },
+      plugins: {
+        legend: { display: false }
+      }
+    }
   });
 }
 
@@ -3345,6 +3503,121 @@ dom.restartBtn.addEventListener("click", () => {
   window.location.reload();
 });
 
+// --- NEW EVENT LISTENERS ---
+
+dom.loginNavBtn.addEventListener("click", () => {
+  dom.authModal.classList.add("active");
+});
+
+dom.closeAuthBtn.addEventListener("click", () => {
+  dom.authModal.classList.remove("active");
+});
+
+dom.tabLogin.addEventListener("click", () => {
+  dom.tabLogin.classList.add("active");
+  dom.tabRegister.classList.remove("active");
+  dom.loginFormArea.classList.add("active");
+  dom.registerFormArea.classList.remove("active");
+});
+
+dom.tabRegister.addEventListener("click", () => {
+  dom.tabRegister.classList.add("active");
+  dom.tabLogin.classList.remove("active");
+  dom.registerFormArea.classList.add("active");
+  dom.loginFormArea.classList.remove("active");
+});
+
+dom.loginForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const email = document.getElementById("loginEmail").value;
+  // Mock login: use name from email prefix
+  const name = email.split("@")[0];
+  saveUserData({ name, email, id: "USER-" + Math.floor(Math.random() * 1000) });
+  dom.authModal.classList.remove("active");
+  alert("Berhasil masuk! Selamat datang, " + name);
+});
+
+dom.registerForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = document.getElementById("regName").value;
+  const email = document.getElementById("regEmail").value;
+  saveUserData({ name, email, id: "USER-" + Math.floor(Math.random() * 1000) });
+  dom.authModal.classList.remove("active");
+  alert("Pendaftaran berhasil! Selamat datang, " + name);
+});
+
+dom.logoutBtn.addEventListener("click", () => {
+  state.currentUser = null;
+  localStorage.removeItem(LOCAL_USER_KEY);
+  updateUserUI();
+  setActiveScreen(dom.startScreen);
+});
+
+dom.dashboardNavBtn.addEventListener("click", () => {
+  renderDashboard();
+  setActiveScreen(dom.dashboardScreen);
+});
+
+dom.mainNav.querySelectorAll('a[href="#simulationForm"]').forEach(a => {
+  a.addEventListener("click", () => {
+    setActiveScreen(dom.startScreen);
+  });
+});
+
+dom.backToHomeBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    setActiveScreen(dom.startScreen);
+  });
+});
+
+// Navigation to Materials (via "Pelajari Fitur" or footer links if added)
+document.querySelectorAll('a[href="#featuresSection"]').forEach(a => {
+  a.addEventListener("click", (e) => {
+    if (a.textContent.includes("Materi")) {
+      e.preventDefault();
+      setActiveScreen(dom.materialsScreen);
+    }
+  });
+});
+
+// Pricing Buttons to Payment Modal
+dom.pricingBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    const card = btn.closest(".pricing-card");
+    const name = card.querySelector("h3").textContent;
+    const price = card.querySelector(".price").textContent;
+    
+    dom.selectedPackageName.textContent = name;
+    dom.selectedPackagePrice.textContent = price;
+    dom.paymentModal.classList.add("active");
+  });
+});
+
+dom.closePaymentBtn.addEventListener("click", () => {
+  dom.paymentModal.classList.remove("active");
+});
+
+dom.confirmPaymentBtn.addEventListener("click", () => {
+  alert("Pembayaran berhasil diproses (Simulasi). Fitur premium Anda telah aktif!");
+  dom.paymentModal.classList.remove("active");
+});
+
+// Footer Navigation (if needed)
+document.querySelectorAll('.main-nav a').forEach(link => {
+  link.addEventListener('click', (e) => {
+    const targetId = link.getAttribute('href');
+    if (targetId.startsWith('#')) {
+      const targetEl = document.querySelector(targetId);
+      if (targetEl) {
+        // If we are not on start screen, go back first
+        if (!dom.startScreen.classList.contains('active')) {
+          setActiveScreen(dom.startScreen);
+        }
+      }
+    }
+  });
+});
+
 document.addEventListener("keydown", (event) => {
   if (!dom.examScreen.classList.contains("active")) {
     return;
@@ -3416,5 +3689,7 @@ if (dom.examType) {
 }
 renderExamDetails();
 renderTopScores();
+loadUserData();
+loadHistory();
 applyTheme();
 applySoundLabel();
